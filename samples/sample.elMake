@@ -9,7 +9,6 @@
 ((elmakefile "PROJECT-NAME" "0.8.15")
  (filelist elfiles "\\.el$")
  (filelist elcfiles "\\.elc$")
- (filelist this "^elMakefile$")
  (filelist texifiles "project\\.texi$")
  (filelist infofiles "project\\.info$")
  (target "compile" 
@@ -17,16 +16,20 @@
 	 (makeinfo texifiles))
  (target "install" (depends "compile")
 	 (mkdir targetdir)
-	 (copy targetdir elcfiles this)
+	 (copy targetdir elcfiles)
+	 (copy-elmakefile targetdir)
 	 (copy-source targetdir elfiles)
 	 (copy infodir infofiles)
 ;	 (register-require PROJECT-AUTOLOADS)
 	 (register-installed))
  (target "uninstall"
-	 (delete targetdir elfiles elcfiles this)
+	 (delete targetdir elfiles elcfiles)
+	 (delete-elmakefile targetdir)
 	 (rmdir targetdir)
 	 (delete infodir infofiles) 
 ;	 (unregister-require PROJECT-AUTOLOADS)
-	 (register-uninstalled)))
+	 (register-uninstalled))
+ (target "update" (depends "install"))
+ (target "uninstall-for-update" (depends "uninstall")))
 
 

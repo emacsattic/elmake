@@ -1,0 +1,18 @@
+;; emptyA -- an empty project for testing package management
+;;
+;; this sample is a minimal project - it does not do anything except
+;; register itself for package management. So it is an ideal candidate
+;; for package management tests.
+
+
+((elmakefile "emptyB" "2.0")
+ (target "install"
+	 (mkdir targetdir)
+	 (copy-elmakefile targetdir)
+	 (register-installed))
+ (target "uninstall"
+	 (delete-elmakefile targetdir)
+	 (rmdir targetdir)
+	 (register-uninstalled))
+ (target "update" (depends "install"))
+ (target "uninstall-for-update" (depends "uninstall")))

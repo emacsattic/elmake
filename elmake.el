@@ -43,16 +43,20 @@
 (defvar elmake-project-target-alist nil)
 (defvar elmake-project-string-alist nil)
 (defvar elmake-project-filelist-alist nil)
+(defvar elmake-project-elmakefile nil)
 (defvar elmake-targets-done nil)
 (defvar elmake-copy-source t)
 (defvar elmake-installed-alist nil)
 (defvar elmake-require-list nil)
+
+(defvar elmake-batch-mode nil)
 
 (defun elmake-load-elmakefile (buf)
   "Load an elMakefile from buffer BUF.
 The data is stored into the elmake-project-* variables."
   (setq elmake-project-name nil
 	elmake-project-version nil
+	elmake-project-elmakefile (buffer-file-name buf)
 	elmake-project-target-alist nil
 	elmake-project-string-alist nil
 	elmake-project-filelist-alist nil)
@@ -161,8 +165,7 @@ already defined and stored in `elmake-project-filelist-alist'."
 
 (defun elmake-indent (level)
   "Produce indentation spaces according to current nesting LEVEL."
-  (if (= level 0) ""
-    (concat (elmake-indent (1- level)) "   ")))
+  (make-string (* 3 level) ? ))
 
 (defun elmake-log (level string)
   "Log a string into the log buffer.
@@ -170,6 +173,8 @@ LEVEL specifies how many spaces to add before it, STRING the string to
 add."
   (set-buffer (get-buffer-create "*elMake*"))
   (insert (concat (elmake-indent level) string "\n"))
+  (if elmake-batch-mode
+      (send-string-to-terminal (concat (elmake-indent level) string "\n")))
   (sit-for 0))
 
 (defun elmake-run-target-0 (targetname level)
@@ -223,7 +228,6 @@ LEVEL specifies the nesting level of the target running this action."
 	(setq flist (cdr flist)))))
    ((eq (car action) 'makeinfo) ;;; makeinfo ;;;
     (let ((flist (elmake-parse-filelist (cdr action))))
-;      (require 'elmake-makeinfo)
       (while flist
 	(when (file-newer-than-file-p (car flist) (elmake-makeinfo-dest-file (car flist)))
 	  (elmake-log level (format "   making info for %s"
@@ -243,11 +247,25 @@ LEVEL specifies the nesting level of the target running this action."
 			  (car flist) dest))
 	  (copy-file (car flist) (concat dest "/" (car flist)) t t))
 	(setq flist (cdr flist)))))
+   ((eq (car action) 'copy-elmakefile) ;;; copy-elmakefile ;;;
+    (let ((dest (elmake-parse-string (car (cdr action)))))
+	(when (file-newer-than-file-p elmake-project-elmakefile
+				      (concat dest "/elMakefile"))
+	  (elmake-log level (format "   copying %s to %s"
+			  (elmake-basename elmake-project-elmakefile)
+			  dest))
+	  (copy-file elmake-project-elmakefile
+		     (concat dest "/elMakefile") t t))))
    ((eq (car action) 'copy-source) ;;; copy-source when disabled ;;;
     nil)
    ((eq (car action) 'delete) ;;; delete;;;
+    (let ((dest (elmake-parse-string (car (cdr action)))))
+      (when (file-exists-p (concat dest "/elMakefile"))
+	(elmake-log level (format "   deleting elMakefile"))
+	(delete-file(concat dest "/elMakefile")))))
+   ((eq (car action) 'delete-elmakefile) ;;; delete-elmakefile;;;
     (let ((dest (elmake-parse-string (car (cdr action))))
-	  (flist (elmake-parse-filelist (cdr (cdr action)))))
+	  (flist (list (elmake-basename elmake-project-elmakefile))))
       (while flist
 	(when (file-exists-p (concat dest "/" (car flist)))
 	  (elmake-log level (format "   deleting %s"
@@ -315,6 +333,14 @@ LEVEL specifies the nesting level of the target running this action."
     fl2))
 	    
 
+(defun elmake-basename (filename)
+  "Return the basename (name without directory) of FILENAME."
+  (let ((p (string-match "[^/]*$" filename)))
+    (if p
+	(substring filename p)
+      p)))
+
+
 ;;;###autoload
 (defun elmake-install (arg)
   "Install the elMakefile in current buffer.
@@ -332,6 +358,10 @@ been installed, uninstall that one first."
   
   (let ((target nil))
     (cond
+     ((eq arg 'batchmode)
+      (if (aget elmake-installed-alist elmake-project-name)
+	  (setq target "<>")
+	(setq target "install")))
      (arg (setq target (read-string "Target: "))) ;; fixme: autocompletion
      ((not (aget elmake-installed-alist elmake-project-name))
       (setq target "install"))

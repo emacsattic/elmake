@@ -19,7 +19,8 @@
 			  "delete" "chdir" "makeinfo" "rmdir" "evaluate"
 			  "execute" "register-require" "register-installed"
 			  "register-uninstalled" "unregister-require"
-			  "nop" "update-autoloads"))
+			  "nop" "update-autoloads" "copy-elmakefile"
+			  "delete-elmakefile"))
 	    "\\)[ )]")))
   
 
