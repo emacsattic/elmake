@@ -1,0 +1,31 @@
+;; elMake is a way to run elMakefiles.
+;;
+;; to install elmake, open elmake-self-install.el in emacs and
+;; follow the instructions there. If you already installed emake, you
+;; can uninstall/update elmake by pressing C-c C-v while this file is 
+;; shown.
+
+((elmakefile "elmake" "0.0.0822g")
+ (filelist elfiles "\\.el$")
+ (filelist elcfiles "\\.elc$")
+ (filelist this "^elMakefile$")
+ (filelist loadfiles "^elmake-load\\.elc?$") 
+ (filelist infofiles "elmake\\.info$")
+ (target "compile" 
+	 (compile elfiles)
+	 (makeinfo "elmake\\.texi$"))
+ (target "install" (depends "compile")
+	 (mkdir targetdir)
+	 (copy targetdir elcfiles this)
+	 (copy-source targetdir elfiles)
+	 (copy basedir loadfiles)
+	 (copy infodir infofiles)
+	 (register-require elmake-autoload)
+	 (register-installed))
+ (target "uninstall"
+	 (delete targetdir elfiles elcfiles this)
+	 (delete infodir infofiles)
+	 (rmdir targetdir)
+	 (unregister-require elmake-autoload)
+	 (register-uninstalled)))
+

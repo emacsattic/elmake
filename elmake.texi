@@ -1,0 +1,308 @@
+\input texinfo   @c -*-texinfo-*-
+@c
+@c $Id$
+@c 
+@c %**start of header
+@setfilename elmake.info
+@settitle elMake Emacs Make System Manual
+@c %**end of header
+
+@copying
+This manual is for elMake.
+
+Copyright @copyright{} 2003 Michael Schierl.
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation.
+@end quotation
+@end copying
+
+
+@titlepage
+@title elMake Manual
+@author Michael Schierl
+
+@c  The following two commands
+@c  start the copyright page.
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+
+Published by ...
+@end titlepage
+
+@c So the toc is printed in the right place.
+@contents
+@ifnottex
+@node Top, Installation, (dir), (dir)
+@top Welcome to elMake
+
+@insertcopying
+
+elMake is a make replacement for building and installing emacs
+packages.  It is written entirely in Emacs Lisp, so that you do not
+need any addtitional packages (like autoconf, bash, make) for
+installing the package.
+@end ifnottex
+
+@menu
+* Installation::                How to install and update elmake.
+* Getting Started::             How to write an elMake file for your project.
+* Command Reference::           List of all commands.
+* Copying::                     Your rights and freedoms.
+* Index::                       Complete index.
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Command Reference
+
+* Overall File Structure::      how elMakefiles look like.
+* Available Main Commands::     things like target or fileset.
+* Default Targets::             targets with a special meaning.
+* Available Actions::           what targets can do.
+
+@end detailmenu
+@end menu
+
+@node Installation, Getting Started, Top, Top
+@chapter Installation
+@cindex Installation
+@cindex Update elmake
+@cindex elmake-self-install.el
+
+If you read this file, you probably have installed elMake anyway.
+
+To install elmake, open elmake-self-install.el in emacs.  You will see
+some lines stating
+@example
+;; place your cursor in the next (empty) line and press C-x C-e
+@point{}
+);; have fun with elmake!
+@end example
+
+Place point where the @point{} sign is and press @kbd{C-x C-e} to
+install elmake.  You will be asked for a directory for installing
+elmake to - enter a directory where you have write access to, as all
+packages you will install using elmake will be installed into
+subdirectories of it.  This directory need not be in the load path,
+however, it does not matter if it is.
+
+Next you have to enter a place where info files should be installed
+to.  As info files are not only used by emacs, this directory should be
+part of your info path.
+
+The last question wants to know where to put elmake's initialization
+code.  GNU emacs users will most probably select the @file{~/.emacs}
+file, users of XEmacs the @file{~/.xemacs/init.el} file.
+
+After these three questions, elmake will bootstrap itself (run its own
+elmake file) and add initialization code to the end of that file.
+
+
+For uninstalling elmake, open the file @file{elMakefile} in the elmake
+directory and hit @kbd{C-c C-v}.
+
+@node Getting Started, Command Reference, Installation, Top
+@chapter Getting Started
+@cindex Getting Started
+@cindex Example file
+@cindex First steps
+@cindex elMakefile
+
+Okay, you want to create an elMakefile, good idea.  Name the file
+@file{elMakefile} or @file{yourproject.elMake} - if your operating
+system does not allow that long names, use the name @file{elmake.fle}.
+
+If you want to create an elMakefile for a project not by you, name it
+@file{projectname.elMake_} -- this will make @kbd{C-c C-v} ask for the
+path where the project sources are located.
+
+At the top add a short comment what your project is about (As the
+user opens the elMakefile, he most likely reads that).
+
+elMakefiles always start with a line @footnote{Actually, elMakefiles
+are parsed not line by line, but like a lisp structure -- so you can
+put this onto many lines as well.} like this:
+
+@example
+((elmakefile "@var{project-name}" "@var{project-version}")
+@end example
+
+Note the double opening parenthesis.  The first one of those has to be
+closed at the end of the file.  After this closing paren you can add
+whatever you like.
+
+Usually, you put (string and) fileset specifications next:
+
+@example
+ (filelist elfiles "\.el$")
+ (filelist elcfiles "\.elc$")
+ (filelist this "^elMakefile$")
+ (filelist loadfiles "^elmake-load.elc?$") 
+@end example
+
+In this example, @code{elfiles} refers to all @file{.el} files in current
+dir, and @code{elcfiles} refers to all @file{.elc} files.
+
+You can use lisp code at most places by using the @code{(eval
+@var{form})} code (@pxref{Command Reference} for more details).
+
+After that specifications (you can mix it as you like, if you prefer,
+put targets first), add targets.  Usually you have at least
+@code{compile}, @code{install} and @code{uninstall} targets which
+compile the project (byte-compile files and make info files), install
+and uninstall it.
+
+Targets start with
+
+@example
+(target "@var{targetname}"
+@end example
+
+or 
+
+@example
+(target "@var{targetname}" (depends "@code{firstdep}"
+"@code{seconddep}" [...])
+@end example
+
+and end with a closing parenthesis.
+
+Inside a target you can use several actions for byte-compiling,
+copying, registering autoloads or install progress etc.
+
+@xref{Command Reference}, for details.
+
+See the file @file{samples/sample.elmake} for a short skeleton file.
+
+@node Command Reference, Copying, Getting Started, Top
+@chapter Command Reference
+@cindex Command List
+@cindex List of commands
+@cindex Actions
+@cindex Targets
+
+Use the source, Luke!
+
+@menu
+* Overall File Structure::      how elMakefiles look like.
+* Available Main Commands::     things like target or fileset.
+* Default Targets::             targets with a special meaning.
+* Available Actions::           what targets can do.
+@end menu
+
+
+
+@node Overall File Structure, Available Main Commands, Command Reference, Command Reference
+@section File structure
+@cindex elmakefile
+@cindex Keywords
+@cindex String expression
+@cindex File list expression
+@cindex Symbol expression
+An elmakefile is a Lisp list that contains a list of main
+commands.  The first command of that list is always
+
+@example
+(elmakefile "@var{name}" "@var{version}")
+@end example
+
+The @var{name} is used to distinguish different projects.  Projects can
+be registered as already installed together with their version.  If a
+project is already installed with the same version as the current
+file, the default action is @code{uninstall}.  If another version is
+installed, this version is uninstalled (by locating the file
+@file{elMakefile} in the @file{@var{name}-@var{version}/} folder) and
+then the current version is installed.  If no version is installed at
+all, the current version is installed.
+
+The rest of the list is filled up with main commands (@pxref{Available
+Main Commands}).
+
+There are different kinds of expressions used:
+
+@table @dfn
+@item String expressions
+String expressions can be either a literal string (like
+@code{"Hello"}), a @dfn{named string} (@pxref{Available Main Commands}), or
+constructions like @code{(concat @var{expr1} @var{expr2} @dots{})} (to
+concatenate several String expressions) or @code{(eval . @var{func})}
+to eval lisp code that returns a string expression.  String expressions
+are parsed by the @command{elmake-parse-string} command at load time -
+so you can only refer to named strings defined above that point.
+@item File list expressions
+File list expressions represent list of files.  These expressions are
+evaluated at run time (as new files can appear e. g. after byte
+compiling).  Usually commands expect a list of filelist expressions
+(also known as a @dfn{file list}) which are treated as the union of
+all the filelists given.  A simple file list expression is a string
+expression treated as regexp matching on all filenames that should be
+included.  @dfn{Named file lists} exist as well (@pxref{Available Main
+Commands}), and there are ways to combine file list
+expressions.  @code{(combine @var{expr1} @var{expr2} @dots{})} creates
+the union of the given filelist expressions, @code{(remove
+@var{include} . @var{exclude})} removes all files matching in the
+@var{exclude} file list from the @var{include} file list.  File list
+expressions are parsed by the @command{elmake-parse-filelist-entry}
+command.
+@end table
+
+@node Available Main Commands, Default Targets, Overall File Structure, Command Reference
+@section Main commands
+@cindex named string
+@cindex named file list
+@cindex string
+@cindex filelist
+@cindex target
+
+The following main commands exist:
+
+@table @code
+@item elmakefile
+This entry may only be used at the start of the list.  @xref{Overall File Structure}.
+
+@item string
+Defines a @dfn{named string}.  The syntax is @code{(string @var{name} @var{value})}
+where @var{name} is a symbol for the new string name and @var{value}
+is a string expression representing the value.
+
+@item filelist
+Defines a @dfn{named file list}.  The syntax is @code{(filelist
+@var{name} @var{expr1} @var{expr2} @dots{})} where @var{name} is the
+name for the file list and @var{expr1} etc. are the file lists to
+unite for this filelist.
+
+@item target
+Defines a @dfn{target}.  Each target may have multiple actions in
+it.  Syntax is @code{(target "@var{name}" @var{actions})}.  A kind of
+pseudo action is @code{(depends "@var{target1}" "@var{target2}"
+@dots{})}, which specifies that before the target runs other targets
+have to be run (if they have not been run yet).  @xref{Default
+Targets}.  @xref{Available Actions}.
+@end table
+
+@node Default Targets, Available Actions, Available Main Commands, Command Reference
+@section Default targets
+
+TODO.
+
+@node Available Actions,  , Default Targets, Command Reference
+@section Available actions
+
+Actions are parsed by @command{elmake-run-action}
+@table @code
+@end table
+
+@node Copying, Index, Command Reference, Top
+@chapter Copying
+@cindex License
+@insertcopying
+
+@node Index,  , Copying, Top
+@unnumbered Index
+@printindex cp
+
+@bye

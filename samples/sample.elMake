@@ -1,0 +1,32 @@
+;; sample-file -- a sample file how elmake project can look like
+;;
+;; this sample shows you how an elmake-project skeleton looks like -
+;; you can install and uninstall it as often as you like, as it will
+;; not install anything. (lines starting with one ; are parts you can
+;; uncomment to use.)
+
+
+((elmakefile "PROJECT-NAME" "0.8.15")
+ (filelist elfiles "\\.el$")
+ (filelist elcfiles "\\.elc$")
+ (filelist this "^elMakefile$")
+ (filelist texifiles "project\\.texi$")
+ (filelist infofiles "project\\.info$")
+ (target "compile" 
+	 (compile elfiles)
+	 (makeinfo texifiles))
+ (target "install" (depends "compile")
+	 (mkdir targetdir)
+	 (copy targetdir elcfiles this)
+	 (copy-source targetdir elfiles)
+	 (copy infodir infofiles)
+;	 (register-require PROJECT-AUTOLOADS)
+	 (register-installed))
+ (target "uninstall"
+	 (delete targetdir elfiles elcfiles this)
+	 (rmdir targetdir)
+	 (delete infodir infofiles) 
+;	 (unregister-require PROJECT-AUTOLOADS)
+	 (register-uninstalled)))
+
+

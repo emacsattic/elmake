@@ -1,0 +1,42 @@
+elMake is Free Software, see the GPL for details.
+
+Note: Do not expect elMake to work in current state of development ;)
+
+Installation
+------------
+
+To install elmake, open elmake-self-install.el in emacs.  You will see
+some lines stating
+
+;; place your cursor in the next (empty) line and press C-x C-e
+-!-
+);; have fun with elmake!
+
+Place point where the -!- sign is and press C-x C-e to install elmake.
+You will be asked for a directory for installing elmake to - enter a
+directory where you have write access to, as all packages you will
+install using elmake will be installed into subdirectories of it.
+This directory need not be in the load path, however, it does not
+matter if it is.
+
+Next you have to enter a place where info files should be installed
+to. As info files are not only used by emacs, this directory should be
+part of your info path.
+
+The last question wants to know where to put elmake's initialization
+code. GNU emacs users will most probably select the `~/.emacs'
+file, users of XEmacs the `~/.xemacs/init.el' file.
+
+After these three questions, elmake will bootstrap itself (run its own
+elmake file) and add initialization code to the end of that file.
+
+
+For uninstalling elmake, open the file `elMakefile' in the elmake
+directory and hit `C-c C-v'.
+
+
+Contact me
+----------
+
+If you know any better ways to install (or have any other suggestions)
+drop me a mail at <schierlm@users.sourceforge.net>.
