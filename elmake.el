@@ -30,6 +30,9 @@
 ;;; Commentary:
 
 ;;; Code:
+
+(require 'assoc)
+
 (defvar elmake-base-dir nil
   "The directory where elmake is installed to.")
 (defvar elmake-info-dir nil)
