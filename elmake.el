@@ -259,19 +259,20 @@ LEVEL specifies the nesting level of the target running this action."
    ((eq (car action) 'copy-source) ;;; copy-source when disabled ;;;
     nil)
    ((eq (car action) 'delete) ;;; delete;;;
-    (let ((dest (elmake-parse-string (car (cdr action)))))
-      (when (file-exists-p (concat dest "/elMakefile"))
-	(elmake-log level (format "   deleting elMakefile"))
-	(delete-file(concat dest "/elMakefile")))))
-   ((eq (car action) 'delete-elmakefile) ;;; delete-elmakefile;;;
     (let ((dest (elmake-parse-string (car (cdr action))))
-	  (flist (list (elmake-basename elmake-project-elmakefile))))
+	  (flist (elmake-parse-filelist (cdr (cdr action)))))
       (while flist
 	(when (file-exists-p (concat dest "/" (car flist)))
 	  (elmake-log level (format "   deleting %s"
 			  (car flist)))
 	  (delete-file(concat dest "/" (car flist))))
 	(setq flist (cdr flist)))))
+
+   ((eq (car action) 'delete-elmakefile) ;;; delete-elmakefile;;;
+    (let ((dest (elmake-parse-string (car (cdr action)))))
+      (when (file-exists-p (concat dest "/elMakefile"))
+	(elmake-log level "   deleting elMakefile")
+	(delete-file(concat dest "/elMakefile")))))
    ((eq (car action) 'register-require)  ;;; register-require ;;;
     (add-to-list 'elmake-require-list (car (cdr action)))
     (elmake-save-database)
