@@ -66,7 +66,7 @@ The data is stored into the elmake-project-* variables."
       (setq default-directory makedir)))
   (let* ((mfile (read buf)) first cfirst)
       (unless (eq (car (car mfile)) 'elmakefile)
-	(error "File is no valid elmakefile (signature missing"))
+	(error "File is no valid elmakefile (signature missing)"))
       (setq elmake-project-name (elmake-parse-string (car (cdr (car mfile))))
 	    elmake-project-version (elmake-parse-string
 				    (car (cdr (cdr (car mfile)))))
