@@ -1,13 +1,13 @@
 ;;; elmk-ede.el --- convert ede files to elMakefiles
+;; $Id$
 
 ;;; Commentary:
 
 ;; EDE are `Emacs Development Extensions'
-;; see <URL:...>
+;; see <URL:http://cedet.sourceforge.net/>
 
 ;; elmake-convert-ede-file converts an .ede file into an elMakefile.
 ;; this works even if you do not have EDE installed.
-
 
 ;;; History:
 ;; 
@@ -30,8 +30,6 @@
       (insert (elmake-convert-ede-file-0 edefile))
       (indent-region (point-min) (point-max) nil)))
   (switch-to-buffer buf)))
-
-
 
 (defun elmake-convert-ede-file-0 (edefile)
   "Produce elmakefile from .ede file EDEFILE.

@@ -1,5 +1,5 @@
 ;;; elmake-self-install.el --- bootstrapping elmake
-;; 
+;; $Id$
 
 ;;; Commentary:
 
@@ -43,7 +43,6 @@
 ;; have fun with elmake!
 )
 
-
 ;;; History:
 ;; 
 
@@ -56,7 +55,7 @@
 (defun elmake-self-install ()
   "Bootstrap elmake."
   (let* ((thisfile (buffer-file-name (current-buffer)))
-	 (thisdir (substring thisfile 0 (- (length thisfile) 22))))
+	 (thisdir (substring thisfile 0 -23)))
     (add-to-list 'load-path thisdir)
     (require 'elmk-init)
     (require 'elmake)

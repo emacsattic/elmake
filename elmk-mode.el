@@ -1,4 +1,5 @@
 ;;; elmk-mode.el --- a mode to highlight elMakefiles
+;; $Id$
 
 ;;; Commentary:
 ;; 
@@ -15,21 +16,21 @@
 	    (regexp-opt '("elmakefile" "filelist" "string" "target" "eval"
 			  "concat" "depends" "combine" "remove" "filenames"
 			  "filesuffixes" "indir" "flat" "exact" "replace"
-			  "all-files"))
+			  "all-files" "replace-regexp"))
 	    "\\)\\>")))
 
 (defconst elmake-mode-builtins
   (eval-when-compile
     (concat "(\\("
-	    (regexp-opt '("compile" "message" "mkdir" "copy" "copy-source"
-			  "delete" "chdir" "makeinfo" "rmdir" "evaluate"
-			  "execute" "register-require" "register-installed"
-			  "register-uninstalled" "unregister-require"
-			  "nop" "update-autoloads" "copy-elmakefile"
-			  "delete-elmakefile" "cd" "copy-modified" "touch"
-			  "depends-if" "install-info" "uninstall-info"
-			  "needs-integer" "needs-string" "needs-version"
-			  "needs-package"))
+	    (regexp-opt '("chdir" "compile" "copy" "copy-elmakefile"
+			  "copy-modified" "copy-source" "delete"
+			  "delete-elmakefile" "depends-if" "install-info"
+			  "makeinfo" "message" "mkdir" "needs-integer"
+			  "needs-package" "needs-string" "needs-version" "nop"
+			  "register-installed" "register-require"
+			  "register-uninstalled" "rmdir" "touch"
+			  "uninstall-info" "unregister-require"
+			  "update-autoloads"))
 	    "\\)\\>")))
   
 

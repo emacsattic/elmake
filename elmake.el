@@ -1,13 +1,12 @@
 ;;; elmake.el --- a "make" for emacs lisp projects in pure emacs lisp
+;; $Id$
 
 ;; Copyright (C) 2003 Michael Schierl
 
 ;; Author: Michael Schierl <schierlm-public@gmx.de>
 ;; Keywords: makefile install elisp
 
-;; Version: 0.0
-
-(defvar elmake-version "0.0"
+(defvar elmake-version "0.1"
   "Version of elMake.")
 
 ;; This file is not part of GNU Emacs.
@@ -39,7 +38,6 @@
 
 (if (not (functionp 'when))
     (require 'cl))   ;; when, unless
-
 
 (defgroup elmake nil
   "Emacs Make System."
@@ -161,7 +159,7 @@ already defined and stored in `elmake-project-filelist-alist'."
     (elmake-parse-filelist-entry (concat (regexp-opt (cdr elem) t)
 					 "\\'")))
    ((and (listp elem) (eq (car elem) 'exact))
-    (cdr elem))
+    (elmake-parse-string (cdr elem)))
    ((and (listp elem) (eq (car elem) 'all-files))
     (let (result)
       (mapc
@@ -201,7 +199,9 @@ already defined and stored in `elmake-project-filelist-alist'."
 When optional INDIR is given, use that directory as base directory.
 This is done by parsing all entries separately and concatenating the
 resulting lists."
-(let ((default-directory (or indir default-directory)))
+(let ((default-directory (if indir
+			     (expand-file-name indir)
+			   default-directory)))
   (apply 'append
 	 (mapcar 'elmake-parse-filelist-entry fl))))
 
@@ -219,7 +219,16 @@ This takes a file FILE and returns the name of it at that destination."
 		    p)))
       (concat dest2 file2)))
    ((and (consp dest) (eq (car dest) 'replace))
-    (error "FIXME: not implemented"))
+    (let (result (dst (cdr dest)))
+      (while (and (null result) dst)
+	(when (string= (substring file 0 (length (car dst))) (car dst))
+	  (setq result (concat (nth 1 dst)
+			       (substring file (length (car dst))))))
+	(setq dst (nthcdr 2 dst)))
+      (if result
+	  result
+	(error "No matching search term qfor %S and file %S"
+	       dest file))))
    ((stringp (elmake-parse-string dest))
     (concat (elmake-parse-string dest) "/" file))
    (t (error "Unknown destination %S for file %S" dest file))))
@@ -311,14 +320,13 @@ LEVEL specifies the nesting level of the target running this action."
    ((eq (car action) 'install-info) ;;; install-info ;;;
     (mapc
      (lambda (fl)
-       (elmake-log level (format "   adding %s to top node"
-				 fl))
+       (elmake-log level (format "   adding %s to `dir' node" fl))
        (elmake-install-info fl))
      (elmake-parse-filelist (cdr action) elmake-info-dir)))
    ((eq (car action) 'uninstall-info) ;;; uninstall-info ;;;
     (mapc
      (lambda (fl)
-       (elmake-log level (format "   removing %s from top node" fl))
+       (elmake-log level (format "   removing %s from `dir' node" fl))
        (elmake-install-info fl))
      (elmake-parse-filelist (cdr action) elmake-info-dir)))
    ((or (eq (car action) 'copy) ;;; copy ;;;
@@ -412,20 +420,22 @@ LEVEL specifies the nesting level of the target running this action."
     (mapconcat 'elmake-parse-string (cdr action) ""))
    ((eq (car action) 'run) ;;; run ;;;
     (eval (cons 'progn  (cdr action))))
-   ((eq (car action) 'cd) ;;; cd ;;;
-    (cd (elmake-parse-string (car (cdr action)))))
    ((eq (car action) 'touch) ;;; touch ;;;
-    (let* ((dest (car (cdr action)))
-	   (file (elmake-parse-string (car (cdr (cdr action)))))
-	   (destfile (elmake-parse-destination dest file)))
+    (let* ((dest (nth 1 action))
+	   (file (elmake-parse-string (nth 2 action)))
+	   (destfile (elmake-parse-destination dest file))
+	   (contents (nth 3 action)))
       (save-excursion
 	(with-current-buffer (find-file-noselect destfile)
 	  (set-buffer-modified-p t)
+	  (when contents
+	    (delete-region (point-min) (point-max))
+	    (insert (elmake-parse-string contents)))
 	  (save-buffer 0)
 	  (kill-buffer nil)))))
    ((eq (car action) 'copy-modified) ;;; copy-modified ;;;
     (let* ((dest (car (cdr action)))
-	   (file (nth 2 action))
+	   (file (elmake-parse-string (nth 2 action)))
 	   (mods (cdr (cdr (cdr action)))))
       (elmake-log level (format "   copying modified version of %s to %s"
 				file
@@ -496,6 +506,16 @@ are used for the `copy-modified' command."
 	(while (search-forward fromstring nil t)
 	  (replace-match tostring t t)))
       (if args (error "Replace needs an even number of arguments"))))
+   ((eq (car mod) 'replace-regexp)
+    (let ((args (cdr mod)) fromstring tostring)
+      (while (and args (cdr args))
+	(setq fromstring (elmake-parse-string (car args))
+	      tostring (elmake-parse-string (car (cdr args)))
+	      args (cdr (cdr args)))
+	(goto-char (point-min))
+	(while (re-search-forward fromstring nil t)
+	  (replace-match tostring nil nil)))
+      (if args (error "Regexp replace needs an even number of arguments"))))
    (t
     (error "Unsupported buffer mod: &S" mod))))
 
@@ -514,6 +534,16 @@ are used for the `copy-modified' command."
 	(substring filename p)
       p)))
 
+(defun elmake-directory-name (filename &optional endslash)
+  "Return the directory name of FILENAME.
+When optional ENDSLASH is non-nil, always return a trailing slash."
+  (let ((p (string-match "^\\(.*\\)/" filename)))
+    (if p
+	(let ((fn (match-string-no-properties 1 filename)))
+	  (if (or endslash (string= "" fn) (string-match ":$" fn))
+	      (concat fn "/")
+	    fn))
+      filename)))
 
 ;;;###autoload
 (defun elmake-install (arg)
@@ -525,8 +555,7 @@ been installed, uninstall that one first."
   (interactive "P")
   (elmake-test-site)
   (let* ((dir (buffer-file-name))
-	 (match (string-match "\\(.*\\)/" dir))
-	 (substr (match-string 1 dir)))
+	 (substr (elmake-directory-name dir)))
     (unless (string-match "\\.el[mM]ake_\\'" dir)
       (cd substr)))
   (goto-char (point-min))
@@ -564,15 +593,14 @@ been installed, uninstall that one first."
 
 ;;;###autoload
 (defun elmake-uninstall (arg)
-  "Install the elMakefile in current buffer.
+  "Uninstall the elMakefile in current buffer.
 With an argument ARG, ask for the target - otherwise check if this
-elMakefile has already be installed and do uninstall it in
+elMakefile has already be installed and uninstall it in
 that case.  Otherwise throw an error."
   (interactive "P")
   (elmake-test-site)
   (let* ((dir (buffer-file-name))
-	 (match (string-match "\\(.*\\)/" dir))
-	 (substr (match-string 1 dir))
+	 (substr (elmake-directory-name dir))
 	 (load-path (cons "." load-path)))
     (cd substr))
   (goto-char (point-min))

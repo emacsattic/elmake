@@ -1,44 +1,34 @@
-;; elMake is a way to run elMakefiles.
+;; a smaller elmakefile to simplify updates.
 ;; $Id$
 ;;
-;; to install elmake, open elmake-self-install.el in emacs and follow
-;; the instructions there. If you already installed emake, you can
-;; update elmake by pressing C-c C-v while this file is shown.
-;;
-;; press C-c C-r to uninstall or C-u C-c C-v to run an arbitrary
-;; target.
+;; if the version to update rejects the "normal" elMakefile, install
+;; this elMakefile first - it won't use new features. Then install the
+;; normal elMakefile again.
 
-((elmakefile "elmake" "0.1-rc1")
+((elmakefile "elmake" "update-version")
  (filelist elfiles (remove "\\.el$" . "elmake-self-install\\.el"))
  (filelist elcfiles "\\.elc$")
  (filelist loadfiles "^elmk-init\\.elc?$") 
- (filelist infofiles "elmake\\.info$")
  (string aloadfile "elmk-aload.el")
- (target "clean"
-	 (delete "." elcfiles "^elmk-aload.el$"))
  (target "compile" 
 	 (update-autoloads aloadfile elfiles)
-	 (compile elfiles)
-	 (makeinfo "elmake\\.texi$"))
+	 (compile elfiles))
  (target "install" (depends "compile")
 	 (mkdir targetdir)
-	 (copy-source targetdir elfiles)
 	 (copy targetdir elcfiles)
 	 (copy-elmakefile targetdir)
 	 (copy basedir loadfiles)
-	 (copy infodir infofiles)
-	 (install-info infofiles)
 	 (register-require elmk-aload)
 	 (register-installed))
  (target "update" (depends "install"))
  (target "uninstall-for-update"
 	 ;; dirty hack: ensure all files needed for update are loaded
 	 ;; otherwise install will fail badly.
-	 (run (require 'elmk-info))
+	 (nop (eval . (progn 
+		      (require 'elmk-info)
+		      "")))
 	 (delete targetdir elfiles elcfiles)
 	 (delete-elmakefile targetdir)
-	 (uninstall-info infofiles)
-	 (delete infodir infofiles)
 	 (rmdir targetdir)
 	 (unregister-require elmk-aload)
 	 (register-uninstalled))

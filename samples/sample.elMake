@@ -12,24 +12,25 @@
  (filelist texifiles "project\\.texi$")
  (filelist infofiles "project\\.info$")
  (target "compile" 
+;	 (update-autoloads "my-aload.el" elfiles)
 	 (compile elfiles)
 	 (makeinfo texifiles))
  (target "install" (depends "compile")
 	 (mkdir targetdir)
+	 (copy-source targetdir elfiles)
 	 (copy targetdir elcfiles)
 	 (copy-elmakefile targetdir)
-	 (copy-source targetdir elfiles)
 	 (copy infodir infofiles)
+	 (install-info infofiles)
 ;	 (register-require PROJECT-AUTOLOADS)
 	 (register-installed))
  (target "uninstall"
 	 (delete targetdir elfiles elcfiles)
 	 (delete-elmakefile targetdir)
 	 (rmdir targetdir)
+	 (uninstall-info infofiles)
 	 (delete infodir infofiles) 
 ;	 (unregister-require PROJECT-AUTOLOADS)
 	 (register-uninstalled))
  (target "update" (depends "install"))
  (target "uninstall-for-update" (depends "uninstall")))
-
-

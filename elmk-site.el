@@ -1,8 +1,8 @@
 ;;; elmk-site.el --- manage more than one elmake "site"
+;; $Id$
 
 ;;; Commentary:
 ;; 
-
 
 ;;; History:
 ;; 
@@ -18,10 +18,14 @@ When called interactively, prompt for the new name."
   (interactive "MNew name: ")
   (elmake-test-site)
   (if (aget elmake-site-alist newname)
-      (error "There is already a target named `%s'" newname))
+      (error "There is already a site named `%s'" newname))
   (let ((oldname elmake-site-name) (sitelist elmake-site-alist))
     (setq elmake-site-name newname)
-    (setq elmake-site-alist (mapcar (lambda (x) (if (string= (car x) oldname) (cons newname (cdr x)) x)) elmake-site-alist)))
+    (setq elmake-site-alist (mapcar (lambda (x)
+				      (if (string= (car x) oldname)
+					  (cons newname (cdr x))
+					x))
+				    elmake-site-alist)))
   (elmake-save-database))
 
 ;;;###autoload
@@ -47,10 +51,12 @@ first creation of a site."
     (elmake-site-init-dir basedir))
   (while (not infodir)
     (setq infodir (read-file-name "Info dir: "
-				  "~/" nil nil "elmake-info"))
+				  (elmake-directory-name basedir t)
+				  nil nil "elmake-info"))
     (elmake-site-init-dir infodir))
   (unless registerto
-    (setq registerto (read-file-name "Where to add load code: " "~/" nil t ".emacs")))
+    (setq registerto (read-file-name "Where to add load code: " "~/" nil t
+				     ".emacs")))
   (let ((oldbase elmake-base-dir))
     (setq elmake-base-dir basedir
 	  elmake-info-dir infodir
@@ -61,8 +67,7 @@ first creation of a site."
       (let ((pth (locate-library "elmk-init.el" t)))
 	(unless pth
 	  (error "Cannot find elmk-init.el"))
-	(setq oldbase (substring pth 0 (eval-when-compile
-					 (- (length "/elmk-init.el")))))))
+	(setq oldbase (elmake-directory-name pth))))
     (if initfunc
 	(funcall initfunc)
       (copy-file (concat oldbase "/elmk-init.el")

@@ -1,9 +1,9 @@
 ;;; elmk-pkman.el --- elmake package manager
+;; $Id$
 
 ;;; Commentary:
 ;; 
 ;; this package manager looks ugly.  make it look better.
-
 
 ;;; History:
 ;; 
@@ -29,31 +29,23 @@ to invoke.  Press `q' to quit.
 Current site is `" elmake-site-name "'.
 
 Available sites:\n")
-  (let ((sl elmake-site-alist) csl)
-    (while sl
-      (setq csl (car sl)
-	    sl (cdr sl))
+  (mapc
+   (lambda (csl)
       (insert (car csl) " <" (car (cdr csl)) "> "
 	      (if (string= (car csl) elmake-site-name)
 		  "(current site)\n"
-		"[Select]\n"))))
-  (insert "[Add]\n
-Installed packages:\n")
-  (let ((sl elmake-installed-alist) csl)
-    (while sl
-      (setq csl (car sl)
-	    sl (cdr sl))
-      (insert (car csl) " (" (cdr csl) ") [Uninstall]\n")))
-  (insert "
-Installed single files:\n")
-  (let ((default-directory (concat elmake-base-dir elmake-single-file-place))
-	sfl sf)
-    (setq sfl (elmake-parse-filelist-entry '(remove "\.el\\'" .
-						   "\\`elmk-sf-al.el\\'")))
-    (while sfl
-      (setq sf (car sfl)
-	    sfl (cdr sfl))
-      (insert sf " [Remove]\n")))
+		"[Select]\n")))
+   elmake-site-alist)
+  (insert "[Add]\n\nInstalled packages:\n")
+  (mapc
+   (lambda (csl)
+     (insert (car csl) " (" (cdr csl) ") [Uninstall]\n"))
+   elmake-installed-alist)
+  (insert "\nInstalled single files:\n")
+  (mapc
+   (lambda (sf)
+     (insert (car sf) " [Remove]\n"))
+   (elmake-installed-single-file-alist))
   (insert "\n\n----------------------")
   (setq buffer-read-only t)
   (setq truncate-lines t)

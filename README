@@ -2,8 +2,8 @@ elMake is Free Software, see the GPL for details.
 
 Note: Do not expect elMake to work in current state of development ;)
 
-Installation
-------------
+Single-user installation
+------------------------
 
 To install elmake, open elmake-self-install.el in emacs.  You will see
 some lines stating
@@ -21,7 +21,9 @@ matter if it is.
 
 Next you have to enter a place where info files should be installed
 to. As info files are not only used by emacs, this directory should be
-part of your info path.
+part of your info path. (However, if you only use info inside emacs,
+you can place it outside your info path as well - or you can add it to
+your info path manually.)
 
 The last question wants to know where to put elmake's initialization
 code. GNU emacs users will most probably select the `~/.emacs'
@@ -31,12 +33,21 @@ After these three questions, elmake will bootstrap itself (run its own
 elmake file) and add initialization code to the end of that file.
 
 
-For uninstalling elmake, open the file `elMakefile' in the elmake
-directory and hit `C-c C-v'.
 
+Multi-user installation
+-----------------------
+
+You will find information about multi-user installation in the info file.
+(Info-goto-node "(elmake)Installation") <-- C-x C-e here.
 
 Contact me
 ----------
 
 If you know any better ways to install (or have any other suggestions)
 drop me a mail at <schierlm@users.sourceforge.net>.
+
+
+Changelog
+---------
+
+2003-12-28 First release

@@ -1,4 +1,5 @@
 ;;; elmk-init.el --- initializing elmake and projects installed by it
+;; $Id$
 
 ;;; Commentary:
 
@@ -21,6 +22,8 @@
 (defvar elmake-init-after-hook nil)
 (defvar elmake-site-alist nil)
 (defvar normal-top-level-add-subdirs-inode-list nil)
+(defvar elmake-other-base-dir nil)
+(defvar elmake-other-info-dir nil)
 
 (defun elmake-internal-adjust-load-path ()
   "Used to adjust the load path to add the elmake dir and all subdirs.
@@ -85,6 +88,15 @@ Shamelessly ripped from startup.el (Emacs 21)"
   (elmake-initialize-load-path)
   (elmake-initialize-info-path)
   (run-hooks 'elmake-init-after-hook))
+
+(defun elmake-init-before-hook-other-path ()
+  "Example `elmake-init-before-hook'.
+Use this if the path saved in your elMake site and the real path
+differ."
+  (if elmake-other-base-dir
+      (setq elmake-base-dir elmake-other-base-dir
+	    elmake-info-dir elmake-other-info-dir
+	    elmake-other-base-dir nil)))
 
 (provide 'elmk-init)
 

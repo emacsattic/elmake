@@ -7,6 +7,13 @@
 @settitle elMake Emacs Make System Manual
 @c %**end of header
 
+@ifinfo
+@dircategory ElMake
+@direntry
+* ElMake: (elmake).     Emacs Make System.
+@end direntry
+@end ifinfo
+
 @copying
 This manual is for elMake.
 
@@ -18,7 +25,6 @@ under the terms of the GNU Free Documentation License, Version 1.1 or
 any later version published by the Free Software Foundation.
 @end quotation
 @end copying
-
 
 @titlepage
 @title elMake Manual
@@ -49,34 +55,51 @@ installing the package.
 
 @menu
 * Installation::                How to install and update elmake.
-* Getting Started::             How to write an elMake file for your project.
-* Command Reference::           List of all commands.
+* Using elMake::                User Manual.
+* Creating an elMakefile::      How to use elMakefiles with your
+                                  own projects.
 * Copying::                     Your rights and freedoms.
 * Index::                       Complete index.
 
 @detailmenu
  --- The Detailed Node Listing ---
 
+Using elMake
+
+* Packages::                    
+* Site Management::             Having more than one place with 
+                                  elmake data.
+* Package Manager::             Showing what you have installed.
+* Single Files::                Things too small for its own 
+                                  elMakefile.
+* Batch Mode::                  Running elMake from command line.
+
+Creating an elMakefile
+
+* Getting Started::             Short Introduction and Overview.
+* Command Reference::           All available commands.
+
 Command Reference
 
-* Overall File Structure::      how elMakefiles look like.
-* Available Main Commands::     things like target or fileset.
-* Default Targets::             targets with a special meaning.
-* Available Actions::           what targets can do.
+* Overall File Structure::      How elMakefiles look like.
+* Available Main Commands::     Things like target or fileset.
+* Default Targets::             Targets with a special meaning.
+* Available Actions::           What targets can do.
 
 @end detailmenu
 @end menu
 
-@node Installation, Getting Started, Top, Top
+@node Installation, Using elMake, Top, Top
 @chapter Installation
 @cindex Installation
 @cindex Update elmake
 @cindex elmake-self-install.el
+@cindex Multi user
 
 If you read this file, you probably have installed elMake anyway.
 
-To install elmake, open elmake-self-install.el in emacs.  You will see
-some lines stating
+To install elmake for a single user, open elmake-self-install.el in
+emacs.  You will see some lines stating 
 @example
 ;; place your cursor in the next (empty) line and press C-x C-e
 @point{}
@@ -92,7 +115,9 @@ however, it does not matter if it is.
 
 Next you have to enter a place where info files should be installed
 to.  As info files are not only used by emacs, this directory should be
-part of your info path.
+part of your info path. (However, if you only use info inside emacs,
+you can place it outside your info path as well - or you can add it to
+your info path manually.)
 
 The last question wants to know where to put elmake's initialization
 code.  GNU emacs users will most probably select the @file{~/.emacs}
@@ -101,12 +126,226 @@ file, users of XEmacs the @file{~/.xemacs/init.el} file.
 After these three questions, elmake will bootstrap itself (run its own
 elmake file) and add initialization code to the end of that file.
 
+Note that you cannot uninstall elMake automatically - for uninstalling
+it, remove the 3 lines from the init file and delete the base
+directory.
 
-For uninstalling elmake, open the file @file{elMakefile} in the elmake
-directory and hit @kbd{C-c C-v}.
+If you want to install elMake for multiple users, you can either
+install it like you do it for single user mode, but in a public
+directory (and add the initializetion code into your
+@file{site-start.el} file). Ensure that only you (the administrator)
+have access to the @file{elmake-db.el} file as its permissions are
+used to distinguish read-only and read-write ``elMake sites''. This
+way of installing allows you to install any number of elmake-aware
+applications into that site directory.
 
-@node Getting Started, Command Reference, Installation, Top
-@chapter Getting Started
+If you do not want to have an elmake site, but provide elmake for your
+users anyway, copy all the .el and .elc files from a single install
+anywhere into the global load path and add
+
+@example
+(require 'elmk-aload)
+@end example
+
+into your @file{site-start.el} file (This way may be most appropriate
+for distributors packaging elMake).
+
+In both cases users can create new ``elmake sites'' by running
+@command{elmake-site-add}.
+
+@node Using elMake, Creating an elMakefile, Installation, Top
+@chapter Using elMake
+
+This secrion describes how to use elmake.
+
+@menu
+* Packages::                    
+* Site Management::             Having more than one place with 
+                                  elmake data.
+* Package Manager::             Showing what you have installed.
+* Single Files::                Things too small for its own 
+                                  elMakefile.
+* Batch Mode::                  Running elMake from command line.
+@end menu
+
+@node Packages, Site Management, Using elMake, Using elMake
+@section Installing and removing packages
+@cindex Packages
+@cindex elMakefile
+@cindex Install
+@cindex Uninstall
+@cindex elMake mode
+
+When you open a package's elMakefile in Emacs, it will be automatically
+highlighted as an elMakefile (due to elMake mode).
+
+elMake mode provides the following keybindings:
+
+@kbd{C-c C-v} installs a package. If it is already installed, it
+checks whether the current version is newer than the installed one. If
+yes, it is installed as well - if no, the user is asked whether he
+wants to reinstall it. An installed earlier version will be
+uninstalled automatically.
+
+With a prefix arg, it asks for the target to run. This target is run
+unconditionally then - a previously installed version is NOT
+uninstalled that way!
+
+@kbd{C-c C-r} uninstalls a package. This uninstalls the installed
+version (if it is different than the one open at the moment). If that
+package is not installed, an error is thrown.
+
+@node Site Management, Package Manager, Packages, Using elMake
+@section Site Management
+@cindex Site Management
+@cindex Site
+@cindex Multi user
+@cindex Different Path
+
+Especially in multi user environments you need a way to separate
+things that should be ``only for you'' and things that are ``for
+everyone'' (if you are the system adminsitrator). Additionally,
+users might want to install their own stuff without messing with the
+apps installed by the sysadmin. Usually, you do this by putting your
+own files into your home directory and public files into some other
+directory. But - as elMake determines the directory automatically, how
+to do that?
+
+The solution is called an ``elMake site''. There can be many of them,
+but one of them is special - the ``active'' one. Each site specifies
+its own base direcory, its own file database and its own installed
+project list. If you do not have have write access to the site's
+database file, the site is called read-only.
+
+Each site knows its absolute pathname to the site and info
+directories. However, you might want to use a (read-only) site where
+the ``actual'' path is different from the path saved in the site
+(e.g. if you use multiple operating systems which mount the drive
+containing the site at different mount points). To archieve this, you
+have to change the load code. Usually it looks like this:
+
+
+@example
+;; added by elmake-site-add
+(load "/path/to/site/elmake-lisp/elmake-db")
+;; end added by elmake-site-add
+@end example
+
+Change it to look like this:
+
+@example
+;; added by elmake-site-add
+(require 'elmk-init "/some/other/path/elmake-lisp/elmk-init")
+(add-hook 'elmake-init-before-hook
+          'elmake-init-before-hook-other-path)
+(setq elmake-other-base-dir "/some/other/path/elmake-lisp" 
+      elmake-other-info-dir "/some/other/path/elmake-info")
+(load "/some/other/path/elmake-lisp/elmake-db")
+;; end added by elmake-site-add
+@end example
+
+The first require line is only needed if that is the first site you load on
+your Emacs startup.
+
+An additional site can be created by @command{elmake-site-add}. This
+will ask you all the necessary things (like when you do an
+installation) and initialize the site directory for you.
+
+You can select the current site by @command{elmake-site-select}. All
+future commands will only affect that site then. If the site is
+read-only, most of the commands will not work.
+
+A site can be renamed by @command{elmake-site-rename}. 
+
+As of Version 0.1, a site cannot be deleted.
+
+@node Package Manager, Single Files, Site Management, Using elMake
+@section Package Manager
+@cindex Package manager
+@cindex Uninstall
+
+If you want to know what you have installed, or if you want to
+uninstall things, use the package manager invoked by
+@command{elmake-package-manager}. Press Return on an [action button]
+to invoke it.
+
+You can as well uninstall a package via @kbd{C-c C-r} while the
+package's elMakefile is open. Uninstalling a single file works with
+@command{elmake-single-uninstall}. @xref{Single Files}.
+
+@node Single Files, Batch Mode, Package Manager, Using elMake
+@section Single Files
+
+Any single Elisp file which uses autoload cookies can be installed
+automatically by elMake. Simply open the file and run
+@command{elmake-single-install}. These files are copied into the
+elMake site directory, so if you have saved them in a temp directory
+before, you can delete them afterwards.
+
+If the file is in a buffer, but not saved as the correct file name
+(e.g. a Gnus article from news:gnu.emacs.sources), you can use
+@command{elmake-single-install-buffer} to install the file(s) in that
+buffer. In that case, additionally to autoload cookies, these files
+must have markers like
+
+@example
+;;; elmake.el --- a "make" for emacs lisp projects in pure emacs lisp
+
+[file here]
+
+;;; elmake.el ends here
+@end example
+
+to work as expected. To uninstall installed single files either use
+the package manager or @command{elmake-single-uninstall}.
+
+@node Batch Mode,  , Single Files, Using elMake
+@section Batch Mode
+
+You can use batch mode to update elMakefiles from shell scripts
+etc. (e.g. have a script that updates CVS and then installs the
+freshly-updated version)
+
+To use batch mode, you need an Elisp file that both loads elMake (as
+the @code{-batch} switch ignores your personal init files) and your
+site. If you have installed elMake into the site you want to use for
+batch mode, you can simply use the @file{elmake-db} file in your
+site's base directory. If you want to use another site (or if you have
+installed elMake completely outsite any elMake site), you can select a
+site by @command{elmake-site-select} and then run
+@command{elmake-batch-build-load-file} to build a file called
+@file{~/.elmake-batch-load} you can use. 
+
+Create an environment variable ELMAKE containing the (path and) file
+name of this file. On Unix, you might add something like
+
+@example
+export ELMAKE=~/.elmake-batch-load
+@end example
+
+in your @file{.profile} file. To use elMake now, use a command like
+
+@example
+emacs -batch -l $ELMAKE -f batch-elmake-install elMakefile
+ -- or --
+emacs -batch -l $ELMAKE -f batch-elmake-install -target target elMakefile
+@end example
+
+replace elMakefile and target by the real elMakefile and target. On
+Windows, use %ELMAKE% instead of $ELMAKE.
+
+@node Creating an elMakefile, Copying, Using elMake, Top
+@chapter Creating an elMakefile
+
+This chapter describes how to create an elMakefile.
+
+@menu
+* Getting Started::             Short Introduction and Overview.
+* Command Reference::           All available commands.
+@end menu
+
+@node Getting Started, Command Reference, Creating an elMakefile, Creating an elMakefile
+@section Getting Started
 @cindex Getting Started
 @cindex Example file
 @cindex First steps
@@ -165,8 +404,7 @@ Targets start with
 or 
 
 @example
-(target "@var{targetname}" (depends "@code{firstdep}"
-"@code{seconddep}" [...])
+(target "@var{targetname}" (depends "@code{firstdep}" "@code{seconddep}" [...])
 @end example
 
 and end with a closing parenthesis.
@@ -178,8 +416,8 @@ copying, registering autoloads or install progress etc.
 
 See the file @file{samples/sample.elmake} for a short skeleton file.
 
-@node Command Reference, Copying, Getting Started, Top
-@chapter Command Reference
+@node Command Reference,  , Getting Started, Creating an elMakefile
+@section Command Reference
 @cindex Command List
 @cindex List of commands
 @cindex Actions
@@ -188,16 +426,14 @@ See the file @file{samples/sample.elmake} for a short skeleton file.
 Use the source, Luke!
 
 @menu
-* Overall File Structure::      how elMakefiles look like.
-* Available Main Commands::     things like target or fileset.
-* Default Targets::             targets with a special meaning.
-* Available Actions::           what targets can do.
+* Overall File Structure::      How elMakefiles look like.
+* Available Main Commands::     Things like target or fileset.
+* Default Targets::             Targets with a special meaning.
+* Available Actions::           What targets can do.
 @end menu
 
-
-
 @node Overall File Structure, Available Main Commands, Command Reference, Command Reference
-@section File structure
+@subsection File structure
 @cindex elmakefile
 @cindex Keywords
 @cindex String expression
@@ -213,7 +449,7 @@ commands.  The first command of that list is always
 The @var{name} is used to distinguish different projects.  Projects can
 be registered as already installed together with their version.  If a
 project is already installed with the same version as the current
-file, the default action is @code{uninstall}.  If another version is
+file, it can be uninstalled.  If another version is
 installed, this version is uninstalled (by locating the file
 @file{elMakefile} in the @file{@var{name}-@var{version}/} folder) and
 then the current version is installed.  If no version is installed at
@@ -230,9 +466,11 @@ String expressions can be either a literal string (like
 @code{"Hello"}), a @dfn{named string} (@pxref{Available Main Commands}), or
 constructions like @code{(concat @var{expr1} @var{expr2} @dots{})} (to
 concatenate several String expressions) or @code{(eval . @var{func})}
-to eval lisp code that returns a string expression.  String expressions
-are parsed by the @command{elmake-parse-string} command at load time -
-so you can only refer to named strings defined above that point.
+to eval lisp code that returns a string expression.  
+
+String expressions are parsed by the @command{elmake-parse-string}
+command at load time - so you can only refer to named strings defined
+above that point. 
 @item File list expressions
 File list expressions represent list of files.  These expressions are
 evaluated at run time (as new files can appear e. g. after byte
@@ -241,17 +479,40 @@ compiling).  Usually commands expect a list of filelist expressions
 all the filelists given.  A simple file list expression is a string
 expression treated as regexp matching on all filenames that should be
 included.  @dfn{Named file lists} exist as well (@pxref{Available Main
-Commands}), and there are ways to combine file list
-expressions.  @code{(combine @var{expr1} @var{expr2} @dots{})} creates
-the union of the given filelist expressions, @code{(remove
-@var{include} . @var{exclude})} removes all files matching in the
-@var{exclude} file list from the @var{include} file list.  File list
-expressions are parsed by the @command{elmake-parse-filelist-entry}
+Commands}), and there are ways to combine file list expressions.
+@code{(combine @var{expr1} @var{expr2} @dots{})} creates the union of
+the given filelist expressions, @code{(remove @var{include}
+. @var{exclude})} removes all files matching in the @var{exclude} file
+list from the @var{include} file list.  @code{(filenames @var{name1}
+@var{name2} @dots{})} matches exactly the given filenames (those of
+them which exist), @code{(filesuffixes @var{suff1} @var{suff2}
+@dots{})} the given file suffixes (include the leading dot in them!);
+these two options do NOT use regexp!  @code{(indir @var{dir}
+. @var{expr})} parses @var{expr} in subdirectory
+@var{dir}. @code{(exact @var{string})} matches exactly this file;
+unlike @code{filenames}, even if that file does not exist!
+@code{(all-files)} matches all files in the current directory,
+including subdirectories. You can use it together with @code{indir} to
+match all files in a subdirectory or together with @code{exclude} to
+match all files not in a subdirectory.
+
+File list expressions are parsed by the @command{elmake-parse-filelist-entry}
 command.
+@item Destination Expressions
+Destination expressions can be either a string expression (to specify
+a destination directory; all relative paths are retained) or
+@code{(flat @var{dest})}, which acts like @var{dest} except that all
+path namess are cut away (flattened). A @code{(replace @var{from1}
+@var{to1} @dots{})} specifies that if the source file name starts with
+@var{from1}, this part is replaced by @var{to1}. If a part does not
+match, the next part is tried. If no part matches, an error is thrown.
+
+Destination expressions are parsed by the
+@command{elmake-parse-destination} command.
 @end table
 
 @node Available Main Commands, Default Targets, Overall File Structure, Command Reference
-@section Main commands
+@subsection Main commands
 @cindex named string
 @cindex named file list
 @cindex string
@@ -285,18 +546,153 @@ Targets}.  @xref{Available Actions}.
 @end table
 
 @node Default Targets, Available Actions, Available Main Commands, Command Reference
-@section Default targets
+@subsection Default targets
 
-TODO.
+The following targets have special meanings (however, you can still
+invoke them by hand):
 
-@node Available Actions,  , Default Targets, Command Reference
-@section Available actions
-
-Actions are parsed by @command{elmake-run-action}
 @table @code
+@item install
+This target is run when installing a project that has not yet been
+installed.  (So this is the ``default target''.)
+@item uninstall
+This target is run when uninstalling a project. While running this
+target, the current directory is the destination directory (as the
+source directory may no longer exist).
+@item update
+This target is run when updating a project. Before running it, the
+target @code{uninstall-for-update} of the ``old'' version is run.
+@item uninstall-for-update
+This target is run when this project is updated by a newer
+version. After running it, the target @code{update} of the ``new''
+version is run.
 @end table
 
-@node Copying, Index, Command Reference, Top
+@node Available Actions,  , Default Targets, Command Reference
+@subsection Available actions
+
+Actions are parsed by @command{elmake-run-action}.
+@table @code
+@item (chdir @var{directory})
+Change current directory to @var{directory} (a string), if that
+directory exists.
+
+@item (compile . @var{filelist})
+Byte compile all files in the filelist which are not compiled or
+where the .el file is newer than the .elc file. 
+
+@item (copy @var{destination} . @var{filelist})
+Copy all files from the @var{filelist} to the @var{destination}.
+
+@item (copy-elmakefile @var{destination})
+Copy the file which is currently interpreted to @var{destination}.
+
+@item (copy-modified @var{destination} @var{file} . @var{rule})
+Copy the file @var{file} (which is a string expression) to
+@var{destination} and apply @var{rule}. @var{rule} is either
+@code{(eval . @var{form})} (which evaluates form while the current
+buffer is the file to be changed) or @code{(replace @var{from1}
+@var{to1} @var{from2} @var{to2} @dots{})} which replaces all
+occurrences of @var{from1} by @var{to1} and so
+on. @code{(replace-regexp @dots{})} does the same for regexps. 
+
+@item (copy-source @var{destination} . @var{filelist})
+Like @code{copy}, but does not copy anything if
+@command{elmake-copy-source} is nil.
+
+@item (delete @var{destination} . @var{filelist})
+Delete files from destination. @var{filelist} is evaluated in the
+destination dir, not in the current dir.
+
+@item (delete-elmakefile @var{destination})
+Delete elMakefile from destination.
+
+@item (depends-if @var{form} . @var{targetlist})
+Depend on (i.e. execute if not executed yet) all targets in
+@var{targetlist} when @var{form} evaluates to a non-nil value.
+
+@item (install-info . @var{filelist})
+Install all info files from @var{filelist} (which is evaluated in
+@command{elmake-info-dir}). This adds their info-dir-entries to the
+@file{dir} file in this directory.
+
+@item (makeinfo . @var{filelist})
+Run makeinfo on all files in @var{filelist} whose destination file
+(the one in @code{@@setfilename}) is older or not existing. If no
+makeinfo binary is found and
+@code{elmake-makeinfo-use-texinfo-format-buffer} is non-nil,
+@code{texinfo-format-buffer} is used instead (which is slow and
+buggy).
+
+@item (message @var{string})
+Print custom message into the log buffer.
+
+@item (mkdir @var{directory})
+Create @var{directory} (a string) if it does not exists yet.
+
+@item (needs-integer @var{variable} @var{value} @var{errormsg})
+Throw error @var{errormsg} (a string) if @var{variable} is not bound
+or @var{variable}'s integer value is smaller than @var{value}.
+
+@item (needs-package @var{package} @var{version} @var{errormsg})
+Throw error @var{errormsg} (a string) if @var{package} is installed or
+its version is smaller than @var{version}, compared by
+@command{elmake-earlier-versionp}.
+
+@item (needs-string @var{variable} @var{value} @var{errormsg})
+Throw error @var{errormsg} (a string) if @var{variable} is not bound
+or @var{variable}'s string value is smaller than @var{value}, compared
+by @command{string-lessp}.
+
+@item needs-version @var{variable} @var{value} @var{errormsg})
+Throw error @var{errormsg} (a string) if @var{variable} is not bound
+or @var{variable}'s string value is smaller than @var{value},compared
+by @command{elmake-earlier-versionp}.
+
+@item (nop @var{string1} @var{string2} @dots{})
+Does nothing; however, for backwards compatibility, all string
+arguments are evaluated (this has been used to evaluate arbitrary code
+when the @code{run} target did not exist yet).
+
+@item (register-installed)
+Save project name and version into the database of installed
+packages.
+
+@item (register-require @var{symbol})
+Require @var{symbol} whenever this elMake site is loaded. Instead of
+@var{symbol}, a list can be used which is evaluated whenever this
+elMake site is loaded. The latter use of this command is deprecated.
+
+@item (register-uninstalled)
+Remove project name and version from the database of installed
+packages. 
+
+@item (rmdir @var{directory})
+Delete @var{directory} (a string), discard any errors.
+
+@item (touch @var{destination} @var{file} &optional @var{contents})
+Touch file @var{file} in @var{destination}. When @var{contents} is
+given, replace current contents of the file by @var{contents}.
+
+@item (uninstall-info . @var{filelist})
+Uninstall all info files from @var{filelist} (which is evaluated in
+@command{elmake-info-dir}). This removed their info-dir-entries from
+the @file{dir} file in this directory. 
+
+@item (unregister-require @var{symbol})
+No longer require @var{symbol} whenever this elMake site is
+loaded. This only takes effect when the same symbol has already been
+registered by @var{register-require}.
+
+@item (update-autoloads @var{aloadfile} . @var{filelist})
+Update autoloads from all files in @var{filelist} into @var{aloadfile}
+(a string). If @var{aloadfile} does not exist, it is created; if it
+already exists, files are only updated if they are newer than
+@var{aloadfile}. 
+
+@end table
+
+@node Copying, Index, Creating an elMakefile, Top
 @chapter Copying
 @cindex License
 @insertcopying

@@ -1,10 +1,8 @@
 ;;; elmk-info.el --- makeinfo support for elMake
-
+;; $Id$
 
 ;;; Commentary:
 ;; 
-
-
 
 ;;; History:
 ;; 
@@ -12,8 +10,15 @@
 ;;; Code:
 (require 'elmake)
 
-(defvar elmake-makeinfo-executable "makeinfo")
-(defvar elmake-makeinfo-use-texinfo-format-buffer nil)
+(defcustom elmake-makeinfo-executable "makeinfo"
+  "*Filename of the makeinfo binary."
+  :type 'string
+  :group 'elmake)
+
+(defcustom elmake-makeinfo-use-texinfo-format-buffer nil
+  "*Whether to use `texinfo-format-buffer' when makeinfo is not available."
+  :type 'boolean
+  :group 'elmake)
 
 ;;;###autoload
 (defun elmake-makeinfo (filename &optional indir)
@@ -36,7 +41,7 @@
       (elmake-log 0 ">>> makeinfo successful.")
       t)
      (t
-      (elmake-log ">>> makeinfo failed (reason: %S)." res)
+      (elmake-log 0 (format ">>> makeinfo failed (reason: %S)." res))
       nil))))
 
 (defun elmake-makeinfo-emacs (filename indir)
@@ -48,7 +53,7 @@
   (if indir (cd indir))
   (let ((buf (find-file-noselect filename)))
     (set-buffer buf)
-    (texinfo-format-buffer)
+    (elmake-texinfo-format-buffer)
     (message "Buf: %S" (current-buffer))
     (save-buffer 0))
   (elmake-log 0 ">>> texinfo-format-buffer successful.")
@@ -57,8 +62,7 @@
 
 ;;;###autoload
 (defun elmake-makeinfo-dest-file (filename)
-  "Implement this!
-FILENAME"
+  "Determine the destination name of texi file FILENAME."
   ;; ripped from makeinfo.el
   (let (makeinfo-output-file-name)
     (save-excursion
@@ -70,14 +74,32 @@ FILENAME"
 	       search-end t)
 	      (setq makeinfo-output-file-name
 		    (buffer-substring (match-beginning 1) (match-end 1)))
-;	    (setq makeinfo-output-file-name "non-existent.file")
 	    (error
-	     "The texinfo file needs a line saying: @setfilename <name>")
-;
-))
+	     "The texinfo file needs a line saying: @setfilename <name>")))
       (kill-buffer nil)))
     makeinfo-output-file-name))
 
+;;;###autoload
+(defun elmake-texinfo-format-buffer ()
+"Process the current buffer as texinfo code, into an Info file.
+This uses `texinfo-format-buffer' after stripping some tags out of the
+file which cannot be handled by that function."
+  (interactive)
+  (let ((buf (current-buffer))
+	(dd default-directory))
+    (with-current-buffer (get-buffer-create "*elmake-texinfo*")
+      (setq default-directory dd)
+      (delete-region (point-min) (point-max))
+      (insert-buffer-substring buf)
+      (goto-char (point-min))
+      (replace-string "\n@copying\n" "\n")
+      (replace-string "\n@end copying\n" "\n")
+      (replace-string "@insertcopying" "[insert COPYING here]")
+      (replace-regexp "^ *@end" "@end")
+      ;; fixme: change more things that make texinfo-format-buffer barf
+      ;; @macro (semantic.texi)
+      ;; 
+      (texinfo-format-buffer))))
 
 
 ;;;###autoload
@@ -125,6 +147,7 @@ a trailing newline.  The section is created if needed."
 						   "/dir"))
     (let (stpt endpos found comp)
       (elmake-init-info)
+      (goto-char (1- (point)))
       (unless (search-forward (concat "\n\n" section "\n") nil 1)
 	(unless (bolp)
 	  (insert "\n"))
@@ -132,6 +155,7 @@ a trailing newline.  The section is created if needed."
       ;; now point is at the first line of the section.
       (setq stpt (point))
       (save-excursion
+	(goto-char (1- (point)))
 	(setq endpos (1- (or (search-forward "\n\n" nil t)
 			    (1+ (point-max))))
 	      found nil))

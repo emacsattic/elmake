@@ -1,4 +1,5 @@
-;; emptyA -- an empty project for testing package management
+;; emptyB -- an empty project for testing package management
+;; $Id$
 ;;
 ;; this sample is a minimal project - it does not do anything except
 ;; register itself for package management. So it is an ideal candidate
@@ -7,6 +8,7 @@
 
 ((elmakefile "emptyB" "2.0")
  (target "install"
+	 (needs-package "emptyA" "1.0" "EmptyA required")
 	 (mkdir targetdir)
 	 (copy-elmakefile targetdir)
 	 (register-installed))
