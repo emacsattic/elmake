@@ -32,8 +32,6 @@ file, users of XEmacs the `~/.xemacs/init.el' file.
 After these three questions, elmake will bootstrap itself (run its own
 elmake file) and add initialization code to the end of that file.
 
-
-
 Multi-user installation
 -----------------------
 

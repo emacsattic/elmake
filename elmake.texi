@@ -634,6 +634,10 @@ Create @var{directory} (a string) if it does not exists yet.
 Throw error @var{errormsg} (a string) if @var{variable} is not bound
 or @var{variable}'s integer value is smaller than @var{value}.
 
+@item (needs-lispfile @var{feature} @var{errormsg})
+Throw error @var{errormsg} (a string) if @var{feature} cannot be
+loaded.
+
 @item (needs-package @var{package} @var{version} @var{errormsg})
 Throw error @var{errormsg} (a string) if @var{package} is installed or
 its version is smaller than @var{version}, compared by
@@ -669,6 +673,9 @@ packages.
 
 @item (rmdir @var{directory})
 Delete @var{directory} (a string), discard any errors.
+
+@item (run . @var{form})
+Evaluate @var{form}.
 
 @item (touch @var{destination} @var{file} &optional @var{contents})
 Touch file @var{file} in @var{destination}. When @var{contents} is

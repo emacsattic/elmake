@@ -55,7 +55,7 @@ first creation of a site."
 				  nil nil "elmake-info"))
     (elmake-site-init-dir infodir))
   (unless registerto
-    (setq registerto (read-file-name "Where to add load code: " "~/" nil t
+    (setq registerto (read-file-name "Where to add load code: " "~/" nil nil
 				     ".emacs")))
   (let ((oldbase elmake-base-dir))
     (setq elmake-base-dir basedir

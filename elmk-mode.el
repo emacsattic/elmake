@@ -30,7 +30,7 @@
 			  "register-installed" "register-require"
 			  "register-uninstalled" "rmdir" "touch"
 			  "uninstall-info" "unregister-require"
-			  "update-autoloads"))
+			  "update-autoloads" "run" "needs-lispfile"))
 	    "\\)\\>")))
   
 

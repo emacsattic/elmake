@@ -176,11 +176,13 @@ already defined and stored in `elmake-project-filelist-alist'."
        (directory-files "."))
       result))
    ((and (listp elem) (eq (car elem) 'indir))
-    (let ((default-directory default-directory) res)
-      (cd (expand-file-name (car (cdr elem))))
-      (setq res (elmake-parse-filelist (cdr (cdr elem))))
-      (mapcar (lambda (x)
-		(concat (car (cdr elem)) "/" x)) res)))
+    (if (file-directory-p (expand-file-name (car (cdr elem))))
+	(let ((default-directory default-directory) res)
+	  (cd (expand-file-name (car (cdr elem))))
+	  (setq res (elmake-parse-filelist (cdr (cdr elem))))
+	  (mapcar (lambda (x)
+		    (concat (car (cdr elem)) "/" x)) res))
+      nil))
    ((and (listp elem) (eq (car elem) 'remove))
     (let ((inc (elmake-parse-filelist-entry (car (cdr elem))))
 	  (exc (elmake-parse-filelist-entry (cdr (cdr elem)))))
@@ -334,7 +336,10 @@ LEVEL specifies the nesting level of the target running this action."
 	     elmake-copy-source))
     (mapc
      (lambda (file)
-       (let ((destfile (elmake-parse-destination (car (cdr action)) file)))
+       (let* ((destfile (elmake-parse-destination (car (cdr action)) file))
+	      (destdir (elmake-directory-name destfile)))
+	 (unless (file-directory-p destdir)
+	   (make-directory destdir t))
 	 (when (file-newer-than-file-p file destfile)
 	   (elmake-log level (format "   copying %s to %s"
 				     file destfile))
@@ -481,6 +486,12 @@ LEVEL specifies the nesting level of the target running this action."
 						    (eval var))))
 	(elmake-log level (concat "Dependency error: "
 				  (elmake-parse-string (nth 3 action))))
+	(error "Dependency not met"))))
+   ((eq (car action) 'needs-lispfile) ;;; needs-lispfile ;;;
+    (let ((var (elmake-parse-string (nth 1 action))))
+      (unless (locate-library var)
+	(elmake-log level (concat "Dependency error: "
+				  (elmake-parse-string (nth 2 action))))
 	(error "Dependency not met"))))
    (t (error "Unknown action: %s" action)))) ;;; end of action list ;;;
  

@@ -8,7 +8,7 @@
 ;; press C-c C-r to uninstall or C-u C-c C-v to run an arbitrary
 ;; target.
 
-((elmakefile "elmake" "0.1-rc1")
+((elmakefile "elmake" "0.1")
  (filelist elfiles (remove "\\.el$" . "elmake-self-install\\.el"))
  (filelist elcfiles "\\.elc$")
  (filelist loadfiles "^elmk-init\\.elc?$") 
