@@ -28,10 +28,27 @@
 ;; Boston, MA 02111-1307 USA
 
 ;;; Commentary:
+;;
+
+;;; History:
+;; 
 
 ;;; Code:
 
 (require 'assoc)
+
+(if (not (functionp 'when))
+    (require 'cl))   ;; when, unless
+
+
+(defgroup elmake nil
+  "Emacs Make System."
+  :group 'development)
+
+(defcustom elmake-copy-source t
+  "*Whether to copy elisp source files into the install dir."
+  :type 'boolean
+  :group 'elmake)
 
 (defvar elmake-base-dir nil
   "The directory where elmake is installed to.")
@@ -45,7 +62,6 @@
 (defvar elmake-project-filelist-alist nil)
 (defvar elmake-project-elmakefile nil)
 (defvar elmake-targets-done nil)
-(defvar elmake-copy-source t)
 (defvar elmake-installed-alist nil)
 (defvar elmake-require-list nil)
 
@@ -68,7 +84,7 @@ The data is stored into the elmake-project-* variables."
       (setq makedir default-directory)
       (set-buffer mybuf)
       (setq default-directory makedir)))
-  (let* ((mfile (read buf)) first cfirst)
+  (let* ((mfile (read buf)) cfirst)
       (unless (eq (car (car mfile)) 'elmakefile)
 	(error "File is no valid elmakefile (signature missing)"))
       (setq elmake-project-name (elmake-parse-string (car (cdr (car mfile))))
@@ -83,25 +99,25 @@ The data is stored into the elmake-project-* variables."
 	    'basedir elmake-base-dir)
       (aput 'elmake-project-string-alist
 	    'infodir elmake-info-dir)
-      (while mfile
-	  (setq first (car mfile)
-		mfile (cdr mfile)
-		cfirst (car first))
-	  (cond
-	   ((eq cfirst 'target)
-	    (aput 'elmake-project-target-alist
-		  (elmake-parse-string (car (cdr first)))
-		  (cdr (cdr first))))
-	   ((eq cfirst 'string)
-	    (let ((key (car (cdr first)))
-		  (value (elmake-parse-string (car (cdr (cdr first))))))
-	    (unless (aget elmake-project-string-alist key)
-	      (aput 'elmake-project-string-alist key value))))
-	   ((eq cfirst 'filelist)
-	    (aput 'elmake-project-filelist-alist
-		  (car (cdr first))
-		  (cdr (cdr first))))
-	    (t (error "Cannot parse : %s" first))))))
+      (mapc
+       (lambda (first)
+	 (setq cfirst (car first))
+	 (cond
+	  ((eq cfirst 'target)
+	   (aput 'elmake-project-target-alist
+		 (elmake-parse-string (car (cdr first)))
+		 (cdr (cdr first))))
+	  ((eq cfirst 'string)
+	   (let ((key (car (cdr first)))
+		 (value (elmake-parse-string (car (cdr (cdr first))))))
+	     (unless (aget elmake-project-string-alist key)
+	       (aput 'elmake-project-string-alist key value))))
+	  ((eq cfirst 'filelist)
+	   (aput 'elmake-project-filelist-alist
+		 (car (cdr first))
+		 (cdr (cdr first))))
+	  (t (error "Cannot parse : %s" first))))
+       mfile)))
 	    
   
 (defun elmake-parse-string (s)
@@ -130,7 +146,14 @@ already defined and stored in `elmake-project-filelist-alist'."
   (cond
    ((not elem) elem)
    ((and (listp elem) (eq (car elem) 'combine))
-	 (elmake-parse-filelist-entry (car (cdr elem)))) ;; to implement...
+    (let ((result (elmake-parse-filelist-entry (car (cdr elem)))))
+      (mapc (lambda (dir)
+	      (mapc
+	       (lambda (entry)
+		 (add-to-list 'result entry))
+	       (elmake-parse-filelist-entry dir)))
+	    (cdr (cdr elem)))
+      result))
    ((and (listp elem) (eq (car elem) 'filenames))
     (elmake-parse-filelist-entry (concat "\\`" (regexp-opt (cdr elem) t)
 					 "\\'")))
@@ -139,6 +162,21 @@ already defined and stored in `elmake-project-filelist-alist'."
 					 "\\'")))
    ((and (listp elem) (eq (car elem) 'exact))
     (cdr elem))
+   ((and (listp elem) (eq (car elem) 'all-files))
+    (let (result)
+      (mapc
+       (lambda (file)
+	 (cond
+	  ((or (string= "." file) (string= ".." file))
+	   nil)
+	  ((file-directory-p file)
+	   (setq result (append result
+				  (elmake-parse-filelist-entry
+				   `(indir ,file (all-files))))))
+	  (t
+	   (setq result (append result (list file))) )))
+       (directory-files "."))
+      result))
    ((and (listp elem) (eq (car elem) 'indir))
     (let ((default-directory default-directory) res)
       (cd (expand-file-name (car (cdr elem))))
@@ -148,22 +186,24 @@ already defined and stored in `elmake-project-filelist-alist'."
    ((and (listp elem) (eq (car elem) 'remove))
     (let ((inc (elmake-parse-filelist-entry (car (cdr elem))))
 	  (exc (elmake-parse-filelist-entry (cdr (cdr elem)))))
-      (while exc
-	(setq inc (remove (car exc) inc)
-	      exc (cdr exc)))
+      (mapc
+       (lambda (elm)
+	 (setq inc (remove elm inc)))
+       exc)
       inc))
    ((and (symbolp elem) (aget elmake-project-filelist-alist elem))
     (elmake-parse-filelist (aget elmake-project-filelist-alist elem)))
    (t
     (directory-files "." nil (elmake-parse-string elem)))))
 
-(defun elmake-parse-filelist (fl)
-"Parse a file list clause FL.  This is done by parsing all entries separately and concatenating the resulting lists."
-(let ((val fl) (result nil))
-  (while val
-    (setq result (nconc result (elmake-parse-filelist-entry (car val)))
-	  val (cdr val)))
-  result))
+(defun elmake-parse-filelist (fl &optional indir)
+"Parse a file list clause FL.
+When optional INDIR is given, use that directory as base directory.
+This is done by parsing all entries separately and concatenating the
+resulting lists."
+(let ((default-directory (or indir default-directory)))
+  (apply 'append
+	 (mapcar 'elmake-parse-filelist-entry fl))))
 
 (defun elmake-parse-destination (dest file)
   "Parse a destination DEST.
@@ -219,10 +259,11 @@ add."
 			 (cons "." load-path))))
     (unless actions
       (error "Unknown target %s" targetname))
-    (while actions
-      (elmake-run-action (car actions) level)
-      (setq actions (cdr actions))))
-  (elmake-log level (format "--- Finished %s" targetname)))
+    (mapc
+     (lambda (action)
+       (elmake-run-action action level))
+     actions))
+    (elmake-log level (format "--- Finished %s" targetname)))
 
 (defun elmake-run-action (action level)
   "Run one ACTION.
@@ -232,11 +273,11 @@ LEVEL specifies the nesting level of the target running this action."
     (error "Unknown action: %s" action))
   (cond
    ((eq (car action) 'depends) ;;; depends ;;;
-    (let ((params (cdr action)))
-      (while params
-	(unless (member (car params) elmake-targets-done)
-	  (elmake-run-target-0 (car params) (1+ level)))
-	(setq params (cdr params)))))
+    (mapc
+     (lambda (elem)
+	(unless (member elem elmake-targets-done)
+	  (elmake-run-target-0 elem (1+ level))))
+     (cdr action)))
    ((eq (car action) 'message) ;;; message ;;;
     (elmake-log level (format "+++ %s +++"
 		    (elmake-parse-string (car (cdr action))))))
@@ -252,58 +293,67 @@ LEVEL specifies the nesting level of the target running this action."
 	(delete-directory (elmake-parse-string (car (cdr action))))
       (error nil)))
    ((eq (car action) 'compile) ;;; compile ;;;
-    (let ((flist (elmake-parse-filelist (cdr action))))
-      (while flist
-	(when (file-newer-than-file-p (car flist) (concat (car flist) "c"))
-	  (elmake-log level (format "   byte compiling %s"
-			  (car flist)))
-	  (unless (byte-compile-file (car flist))
-	    (elmake-log level (format "*** error compiling %s" (car flist)))))
-	(setq flist (cdr flist)))))
+    (mapc
+     (lambda (file)
+	(when (file-newer-than-file-p file (concat file "c"))
+	  (elmake-log level (format "   byte compiling %s" file))
+	  (unless (byte-compile-file file)
+	    (elmake-log level (format "*** error compiling %s" file)))))
+     (elmake-parse-filelist (cdr action))))
    ((eq (car action) 'makeinfo) ;;; makeinfo ;;;
-    (let ((flist (elmake-parse-filelist (cdr action))))
-      (while flist
-	(when (file-newer-than-file-p (car flist) (elmake-makeinfo-dest-file (car flist)))
-	  (elmake-log level (format "   making info for %s"
-			  (car flist)))
-	  (unless (elmake-makeinfo (car flist))
-	    (elmake-log level (format "*** error-making info for %s"))))
-	(setq flist (cdr flist)))))
+    (mapc
+     (lambda (file)
+       (when (file-newer-than-file-p file (elmake-makeinfo-dest-file file))
+	  (elmake-log level (format "   making info for %s" file))
+	  (unless (elmake-makeinfo file)
+	    (elmake-log level (format "*** error-making info for %s" file)))))
+     (elmake-parse-filelist (cdr action))))
+   ((eq (car action) 'install-info) ;;; install-info ;;;
+    (mapc
+     (lambda (fl)
+       (elmake-log level (format "   adding %s to top node"
+				 fl))
+       (elmake-install-info fl))
+     (elmake-parse-filelist (cdr action) elmake-info-dir)))
+   ((eq (car action) 'uninstall-info) ;;; uninstall-info ;;;
+    (mapc
+     (lambda (fl)
+       (elmake-log level (format "   removing %s from top node" fl))
+       (elmake-install-info fl))
+     (elmake-parse-filelist (cdr action) elmake-info-dir)))
    ((or (eq (car action) 'copy) ;;; copy ;;;
 	(and (eq (car action) 'copy-source) ;;; copy-source ;;;
 	     elmake-copy-source))
-    (let ((dest (car (cdr action)))
-	  (flist (elmake-parse-filelist (cdr (cdr action)))))
-      (while flist
-	(let* ((file (car flist))
-	       (destfile (elmake-parse-destination dest file)))
-	  (when (file-newer-than-file-p file destfile)
-	  (elmake-log level (format "   copying %s to %s"
-			  file destfile))
-	  (copy-file file destfile t)))
-	(setq flist (cdr flist)))))
+    (mapc
+     (lambda (file)
+       (let ((destfile (elmake-parse-destination (car (cdr action)) file)))
+	 (when (file-newer-than-file-p file destfile)
+	   (elmake-log level (format "   copying %s to %s"
+				     file destfile))
+	   (copy-file file destfile t))))
+     (elmake-parse-filelist (cdr (cdr action)))))
    ((eq (car action) 'copy-elmakefile) ;;; copy-elmakefile ;;;
     (let ((dest (elmake-parse-string (car (cdr action)))))
-	(when (file-newer-than-file-p elmake-project-elmakefile
-				      (concat dest "/elMakefile"))
-	  (elmake-log level (format "   copying %s to %s"
-			  (elmake-basename elmake-project-elmakefile)
-			  dest))
-	  (copy-file elmake-project-elmakefile
-		     (concat dest "/elMakefile") t t))))
+      (when (file-newer-than-file-p elmake-project-elmakefile
+				    (concat dest "/elMakefile"))
+	(elmake-log level (format "   copying %s to %s"
+				  (elmake-basename elmake-project-elmakefile)
+				  dest))
+	(copy-file elmake-project-elmakefile
+		   (concat dest "/elMakefile") t t))))
    ((eq (car action) 'copy-source) ;;; copy-source when disabled ;;;
     nil)
    ((eq (car action) 'delete) ;;; delete;;;
-    (let ((dest (car (cdr action)))
-	  (flist (elmake-parse-filelist (cdr (cdr action)))))
-      (while flist
-	(let* ((file (car flist))
-	       (destfile (elmake-parse-destination dest file)))
-	(when (file-exists-p destfile)
-	  (elmake-log level (format "   deleting %s"
-			  file))
-	  (delete-file destfile)))
-	(setq flist (cdr flist)))))
+    (let ((dest (car (cdr action))))
+      (mapc
+       (lambda (file)
+	 (let ((destfile (elmake-parse-destination dest file)))
+	   (when (file-exists-p destfile)
+	     (elmake-log level (format "   deleting %s"
+				       file))
+	     (delete-file destfile))))
+       (elmake-parse-filelist (cdr (cdr action))
+			      (elmake-parse-destination dest "")))))
    ((eq (car action) 'delete-elmakefile) ;;; delete-elmakefile;;;
     (let ((dest (elmake-parse-string (car (cdr action)))))
       (when (file-exists-p (concat dest "/elMakefile"))
@@ -388,7 +438,41 @@ LEVEL specifies the nesting level of the target running this action."
    ((eq (car action) 'depends-if) ;;; depends-if ;;;
     (if (eval (car (cdr action)))
 	(elmake-run-action (cons 'depends (cdr (cdr action))) level)))
-   (t (error "Unknown action: %s" action))))
+   ((eq (car action) 'needs-integer) ;;; needs-integer ;;;
+    (let ((var (nth 1 action))
+	  (tocomp (nth 2 action)))
+      (unless (and (boundp var) (>= (eval var) tocomp))
+	(elmake-log level (concat "Dependency error: "
+				  (elmake-parse-string (nth 3 action))))
+	(error "Dependency not met"))))
+   ((eq (car action) 'needs-string) ;;; needs-string ;;;
+    (let ((var (nth 1 action))
+	  (tocomp (elmake-parse-string (nth 2 action))))
+      (unless (and (boundp var) (or (string= (eval var) tocomp)
+				    (string< tocomp (eval var))))
+	(elmake-log level (concat "Dependency error: "
+				  (elmake-parse-string (nth 3 action))))
+	(error "Dependency not met"))))
+   ((eq (car action) 'needs-version) ;;; needs-version ;;;
+    (let ((var (nth 1 action))
+	  (tocomp (elmake-parse-string (nth 2 action))))
+      (unless (and (boundp var) (or (string= (eval var) tocomp)
+				    (elmake-earlier-versionp tocomp
+							     (eval var))))
+	(elmake-log level (concat "Dependency error: "
+				  (elmake-parse-string (nth 3 action))))
+	(error "Dependency not met"))))
+   ((eq (car action) 'needs-package) ;;; needs-package ;;;
+    (let ((var (aget elmake-installed-alist
+		     (elmake-parse-string (nth 1 action))))
+	  (tocomp (elmake-parse-string (nth 2 action))))
+      (unless (and var (or (string= (eval var) tocomp)
+			   (elmake-earlier-versionp tocomp
+						    (eval var))))
+	(elmake-log level (concat "Dependency error: "
+				  (elmake-parse-string (nth 3 action))))
+	(error "Dependency not met"))))
+   (t (error "Unknown action: %s" action)))) ;;; end of action list ;;;
  
 
 (defun elmake-run-buffer-mod (mod)
@@ -439,6 +523,7 @@ elMakefile has already be installed and do nothing in
 that case.  Otherwise run the \"install\" target.  If an older version has
 been installed, uninstall that one first."
   (interactive "P")
+  (elmake-test-site)
   (let* ((dir (buffer-file-name))
 	 (match (string-match "\\(.*\\)/" dir))
 	 (substr (match-string 1 dir)))
@@ -446,14 +531,17 @@ been installed, uninstall that one first."
       (cd substr)))
   (goto-char (point-min))
   (elmake-load-elmakefile (current-buffer))
-  
   (let ((target nil))
     (cond
      ((eq arg 'batchmode)
       (if (aget elmake-installed-alist elmake-project-name)
 	  (setq target "<>")
 	(setq target "install")))
-     (arg (setq target (read-string "Target: "))) ;; fixme: autocompletion
+     ((and (consp arg)
+	   (eq (car arg) 'batchmode))
+      (setq target (cdr arg)))
+     (arg (setq target (completing-read "Target: "
+					elmake-project-target-alist nil t)))
      ((not (aget elmake-installed-alist elmake-project-name))
       (setq target "install"))
      ((string= elmake-project-version
@@ -481,6 +569,7 @@ With an argument ARG, ask for the target - otherwise check if this
 elMakefile has already be installed and do uninstall it in
 that case.  Otherwise throw an error."
   (interactive "P")
+  (elmake-test-site)
   (let* ((dir (buffer-file-name))
 	 (match (string-match "\\(.*\\)/" dir))
 	 (substr (match-string 1 dir))
@@ -497,17 +586,19 @@ that case.  Otherwise throw an error."
 	       (aget elmake-installed-alist elmake-project-version))
 	(setq target "uninstall"))
      (t (setq target "<>")))
-    (when target ;; FIXME: use cond
-      (when (string= target "<>")
-	(message "Uninstalling old version...")
-	(elmake-uninstall-old-version elmake-project-name
-				      "uninstall")
-	(message "Uninstalling old version...done")
-	(switch-to-buffer (get-buffer-create "*elMake*")))
-      (unless (string= target "<>")
-	(message "Installing Target `%s'..." target)
-	(elmake-run-target target)
-	(message "Installing Target `%s'...done" target)))))
+    (cond
+     ((not target)
+      nil)
+     ((string= target "<>")
+      (message "Uninstalling old version...")
+      (elmake-uninstall-old-version elmake-project-name
+				    "uninstall")
+      (message "Uninstalling old version...done")
+      (switch-to-buffer (get-buffer-create "*elMake*")))
+     (t
+      (message "Installing Target `%s'..." target)
+      (elmake-run-target target)
+      (message "Installing Target `%s'...done" target)))))
 
 (defun elmake-uninstall-old-version (name target &optional noread)
   "Uninstalls the installed version of NAME.
@@ -568,6 +659,34 @@ information that has to be in the elmake database."
   (if (listp feature)
       (eval feature)
     (require feature)))
+
+(defun elmake-test-site (&optional allow-read-only)
+  "Test current elmake site.
+If no site exists or the current site is read-only, signal an error.
+If ALLOW-READ-ONLY is set, do not signal an error when the site is
+read only.  Return whether the site is read-write."
+  (unless elmake-base-dir
+    (error "No elmake site"))
+  (let ((rw (and (file-writable-p (concat elmake-base-dir "/elmake-db.el"))
+		 (file-writable-p (concat elmake-base-dir "/dummy.fle")))))
+  (unless (or allow-read-only rw)
+    (error "Elmake site is read-only"))
+  rw))
+
+;; shamelessly ripped from jde.el
+(defun elmake-earlier-versionp (ver1 ver2)
+  "Return non-nil if VER1 is earlier than VER2."
+  (let ((ver1-betap (string-match "beta" ver1))
+        (ver2-betap (string-match "beta" ver2)))
+    (if (or (and ver1-betap ver2-betap)
+            (and (not ver1-betap) (not ver2-betap)))
+        (string< ver1 ver2)
+      (if ver1-betap
+          (progn
+            (or (string= ver2 (substring ver1  0 ver1-betap))
+                (string< (substring ver1 0 ver1-betap) ver2)))
+	(progn
+	  (string< ver1 (substring ver2 0 ver2-betap)))))))
 
 (provide 'elmake)
 

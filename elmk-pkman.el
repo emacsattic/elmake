@@ -2,7 +2,11 @@
 
 ;;; Commentary:
 ;; 
-;; this package manager looks ugly.  fixme: make it look better.
+;; this package manager looks ugly.  make it look better.
+
+
+;;; History:
+;; 
 
 ;;; Code:
 
@@ -13,6 +17,7 @@
 (defun elmake-package-manager ()
   "Start the elmake package manager."
   (interactive)
+  (elmake-test-site t)
   (pop-to-buffer (get-buffer-create "*elMake Package Manager*"))
   (elmake-pm-mode)
   (setq buffer-read-only nil)
@@ -64,6 +69,7 @@ Installed single files:\n")
 (defun elmake-package-action ()
   "Run the [Action] that is in same line as point."
   (interactive)
+  (elmake-test-site t)
   (let ((line (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
 	action context)
   (when (string-match "\\`\\([^ ]*\\).*\\[\\([^][ ]*\\)\\]\\'" line)
@@ -78,11 +84,13 @@ Installed single files:\n")
       (elmake-package-manager-refresh))
      ((and (string= action "Uninstall")
 	   (y-or-n-p (format "Really uninstall %s? " context)))
+      (elmake-test-site)
       (elmake-uninstall-old-version context "uninstall" t)
       (elmake-package-manager-refresh)
-      (switch-to-buffer (get-buffer-create "*elMake*"))) 
+      (switch-to-buffer (get-buffer-create "*elMake*")))
      ((and (string= action "Remove")
 	   (y-or-n-p (format "Really remove %s? " context)))
+      (elmake-test-site)
       (elmake-single-uninstall context)
       (elmake-package-manager-refresh)
       (switch-to-buffer (get-buffer-create "*elMake*")))
@@ -105,8 +113,9 @@ Installed single files:\n")
 
 (font-lock-add-keywords
  'elmake-pm-mode
- `( ("\\(\\[[^][ ]*\\]\\)"  1 'font-lock-warning-face)
-    ("^\\(.*:\\)$" 1 font-lock-function-name-face)))
+ `( ("\\(\\[[^][ ]*\\]\\)"  1 font-lock-warning-face)
+    ("^\\(.*:\\)$" 1 font-lock-function-name-face)
+    ("^.*(current site)\n" 0 'highlight)))
 
 (provide 'elmk-pkman)
 

@@ -3,6 +3,10 @@
 ;;; Commentary:
 ;; 
 
+
+;;; History:
+;; 
+
 ;;; Code:
 
 (defconst elmake-mode-keywords
@@ -10,7 +14,8 @@
     (concat "(\\("
 	    (regexp-opt '("elmakefile" "filelist" "string" "target" "eval"
 			  "concat" "depends" "combine" "remove" "filenames"
-			  "filesuffixes" "indir" "flat" "exact" "replace"))
+			  "filesuffixes" "indir" "flat" "exact" "replace"
+			  "all-files"))
 	    "\\)\\>")))
 
 (defconst elmake-mode-builtins
@@ -22,7 +27,9 @@
 			  "register-uninstalled" "unregister-require"
 			  "nop" "update-autoloads" "copy-elmakefile"
 			  "delete-elmakefile" "cd" "copy-modified" "touch"
-			  "depends-if"))
+			  "depends-if" "install-info" "uninstall-info"
+			  "needs-integer" "needs-string" "needs-version"
+			  "needs-package"))
 	    "\\)\\>")))
   
 

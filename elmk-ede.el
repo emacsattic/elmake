@@ -8,6 +8,10 @@
 ;; elmake-convert-ede-file converts an .ede file into an elMakefile.
 ;; this works even if you do not have EDE installed.
 
+
+;;; History:
+;; 
+
 ;;; Code:
 
 (require 'elmake)
@@ -30,7 +34,9 @@
 
 
 (defun elmake-convert-ede-file-0 (edefile)
-  (let ((projname "<PROJECT-NAME>") 
+  "Produce elmakefile from .ede file EDEFILE.
+Both input and output are Lisp expressions."
+  (let ((projname "<PROJECT-NAME>")
 	(projvers "<PROJECT-VERSION>" )
 	(website "<no url known>")
 	elmkfile)
@@ -47,9 +53,9 @@
 	(setq edefile (cdr (cdr edefile))))
        ((eq (car edefile) ':targets)
 	(setq elmkfile (elmake-parse-ede-targets (nth 1 edefile)))
-	(setq edefile (cdr (cdr edefile))))	
+	(setq edefile (cdr (cdr edefile))))
        (t (setq edefile (cdr edefile)))))
-    (setq elmkfile `((elmakefile ,projname ,projvers) . 
+    (setq elmkfile `((elmakefile ,projname ,projvers) .
 		     ,elmkfile))
     (format ";;; elMakefile for %s %s
 ;;
@@ -63,13 +69,14 @@
 " projname projvers projname website (elmake-format-output elmkfile))))
 
 (defun elmake-parse-ede-targets (targets)
+  "Parse TARGETS of the .ede file."
   (let ((elmkfile nil)
 	(install-deps '(depends))
 	(uninstall-deps '(depends))
 	name tg-path tg-source tg-elc)
     (mapc
-     (lambda (tg) 
-       (cond 
+     (lambda (tg)
+       (cond
 	((eq (car tg) 'ede-proj-target-elisp)
 	 (while tg
 	   (cond
@@ -87,33 +94,33 @@
 	   (error "Path entry must be empty for all targets"))
 	 (setq tg-source (nth 1 tg-source))
 	 (setq tg-elc (mapcar (lambda (file) (concat file "c")) tg-source))
-	 (setq elmkfile 
-	       (append elmkfile 
+	 (setq elmkfile
+	       (append elmkfile
 		       `(
-			 (filelist ,(intern (concat "ede-el-filelist-" name)) 
+			 (filelist ,(intern (concat "ede-el-filelist-" name))
 				   (filenames . ,tg-source))
-			 (filelist ,(intern (concat "ede-elc-filelist-" name)) 
+			 (filelist ,(intern (concat "ede-elc-filelist-" name))
 				   (filenames . ,tg-elc))
 			 (target ,(concat "ede-install-" name)
-				 (compile ,(intern 
+				 (compile ,(intern
 					    (concat "ede-el-filelist-" name)))
-				 (copy targetdir 
-				       ,(intern (concat "ede-elc-filelist-" 
-							name))) 
-				 (copy-source targetdir 
-					      ,(intern 
-						(concat "ede-el-filelist-" 
+				 (copy targetdir
+				       ,(intern (concat "ede-elc-filelist-"
+							name)))
+				 (copy-source targetdir
+					      ,(intern
+						(concat "ede-el-filelist-"
 							name))))
 			 (target ,(concat "ede-uninstall-" name)
-				 (delete targetdir 
-					 ,(intern (concat "ede-el-filelist-" 
+				 (delete targetdir
+					 ,(intern (concat "ede-el-filelist-"
 							  name))
-					 ,(intern (concat "ede-elc-filelist-" 
+					 ,(intern (concat "ede-elc-filelist-"
 							  name))))
 			 )))
-	 (setq install-deps (append install-deps 
+	 (setq install-deps (append install-deps
 				    (list (concat "ede-install-" name))))
-	 (setq uninstall-deps (append uninstall-deps 
+	 (setq uninstall-deps (append uninstall-deps
 				    (list (concat "ede-uninstall-" name)))))
 	(t (message "Unknown target: %S" tg))))
      (cdr targets))
@@ -133,7 +140,7 @@
 
 (defun elmake-format-output (elmakefile)
   "Format output of ELMAKEFILE.
-Input is a lisp expression, output is a pretty printed string."
+Input is a Lisp expression, output is a pretty printed string."
   (let ((str (prin1-to-string elmakefile)))
     (string-match "" "")
     (while (string-match " (" str (match-end 0))

@@ -6,7 +6,11 @@
 ;;
 ;; this file does not need autoloads, as it is loaded at startup anyway
 ;;
-;; FIXME: insert contents of this file into elmake-db.el
+;; insert contents of this file into elmake-db.el?
+
+
+;;; History:
+;; 
 
 ;;; Code:
 
@@ -66,10 +70,9 @@ Shamelessly ripped from startup.el (Emacs 21)"
 
 (defun elmake-initialize-info-path ()
   "Add elmake info dir to info path."
-  (eval-after-load 'info
-    (unless (member elmake-info-dir Info-default-directory-list)
-      (setq Info-default-directory-list 
-	    (append Info-default-directory-list (list elmake-info-dir))))))
+  (unless (member elmake-info-dir Info-default-directory-list)
+    (setq Info-default-directory-list
+	  (append Info-default-directory-list (list elmake-info-dir)))))
 
 (defun elmake-register-site ()
   "Register this site into `elmake-site-alist'."

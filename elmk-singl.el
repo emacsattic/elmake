@@ -5,6 +5,10 @@
 ;; installs single files (like from gnu.emacs.sources) into current
 ;; elmake site.
 
+
+;;; History:
+;; 
+
 ;;; Code:
 
 (require 'elmake)
@@ -15,6 +19,7 @@
 (defun elmake-single-install ()
   "Install the currently loaded .el file."
   (interactive)
+  (elmake-test-site)
   (let ((fn (buffer-file-name)))
     (if (string-match "\\([^/]*\\)$" fn)
 	(setq fn (match-string 0 fn)))
@@ -79,6 +84,7 @@ uninstalling single files."
   "Install an .el file from current buffer.
 Use the file header and footer marks to get the file name."
   (interactive)
+  (elmake-test-site)
   ;; fixme: implement this
   nil)
 
