@@ -46,7 +46,7 @@
     (set-buffer buf)
     (texinfo-format-buffer)
     (message "Buf: %S" (current-buffer))
-    (save-buffer))
+    (save-buffer 0))
   (elmake-log 0 ">>> texinfo-format-buffer successful.")
   (set-buffer (get-buffer-create "*elMake*"))
   t)

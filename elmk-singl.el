@@ -9,6 +9,8 @@
 
 (require 'elmake)
 
+(defconst elmake-single-file-place "/single-files")
+
 ;;;###autoload
 (defun elmake-single-install ()
   "Install the currently loaded .el file."
@@ -16,20 +18,34 @@
   (let ((fn (buffer-file-name)))
     (if (string-match "\\([^/]*\\)$" fn)
 	(setq fn (match-string 0 fn)))
-    (make-directory (concat elmake-base-dir "/single-files") t)
+    (make-directory (concat elmake-base-dir elmake-single-file-place) t)
     (copy-file (buffer-file-name)
-	       (concat elmake-base-dir "/single-files/" fn) t)
+	       (concat elmake-base-dir elmake-single-file-place "/" fn) t)
     (elmake-single-do-it (list fn))))
 
-(defun elmake-single-do-it (filelist)
+;;;###autoload
+(defun elmake-single-uninstall (file)
+  (save-excursion
+    (with-current-buffer (find-file-noselect (concat elmake-base-dir 
+						     elmake-single-file-place
+						     "/" file))
+      (delete-region (point-min) (point-max))
+      (save-buffer 0)
+      (kill-buffer nil)))
+    (elmake-single-do-it (list file) t))
+
+(defun elmake-single-do-it (filelist &optional delete)
   "Register all files in FILELIST for elmake.
-All these files have to be in the subdir `/single-files' of current
-elmake base dir."
-  (let ((default-directory (concat elmake-base-dir "/single-files")))
+All these files have to be in the subdir `elmake-single-file-place' of
+current elmake base dir.  If optional argument DELETE is non-nil,
+delete the files after registering them.  This is used for
+uninstalling single files."
+  (let ((default-directory (concat elmake-base-dir elmake-single-file-place)))
     (add-to-list 'load-path default-directory)
     (save-excursion
       (with-current-buffer (get-buffer-create "*elMake*")
-	(setq default-directory (concat elmake-base-dir "/single-files"))))
+	(setq default-directory (concat elmake-base-dir 
+					elmake-single-file-place))))
     (setq elmake-project-name "single-file"
 	  elmake-project-version "0"
 	  elmake-project-target-alist nil
@@ -47,7 +63,15 @@ elmake base dir."
 	    (compile elfile aloadfile)
 	    (register-require elmk-sf-al)))
     (elmake-run-target "install")
-    (message "File(s) successfully installed")))
+    (cond 
+     (delete
+      (let ((fl filelist))
+	(while fl
+	  (delete-file (car fl))
+	  (delete-file (concat (car fl) "c"))
+	  (setq fl (cdr fl))))
+      (message "File(s) successfully uninstalled."))
+     (t (message "File(s) successfully installed.")))))
 
 ;;;###autoload
 (defun elmake-single-install-buffer ()

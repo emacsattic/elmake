@@ -290,7 +290,7 @@ LEVEL specifies the nesting level of the target running this action."
 			    "\n;;\n(provide '"
 			    (elmake-feature-from-file generated-autoload-file)
 			    ")\n\f\n"))
-	    (save-buffer)
+	    (save-buffer 0)
 	    (kill-buffer nil))))
       (while flist
 	(when (or (not filex) (file-newer-than-file-p (car flist) generated-autoload-file))
@@ -300,7 +300,7 @@ LEVEL specifies the nesting level of the target running this action."
 	  (setq flist (cdr flist)))
       (save-excursion
 	(with-current-buffer (find-file-noselect generated-autoload-file)
-	  (save-buffer)
+	  (save-buffer 0)
 	  (kill-buffer nil)))))
    ((eq (car action) 'nop) ;;; nop ;;;
     ;; no operation, but evaluate all args, if any
@@ -415,7 +415,7 @@ target from it."
       (delete-region (point-min) (point-max))
       (insert ";;; this is a generated file -- do not edit.\n\n")
       (insert (prin1-to-string (elmake-build-database)))
-      (save-buffer)
+      (save-buffer 0)
       (save-excursion
 	(emacs-lisp-byte-compile))
       (kill-buffer nil))))
@@ -424,7 +424,6 @@ target from it."
   "Build the elmake database.
 Returns a list containing a valid Lisp file that contains all
 information that has to be in the elmake database."
-
   `(progn
      (setq elmake-base-dir ,elmake-base-dir
 	   elmake-info-dir ,elmake-info-dir
