@@ -42,7 +42,8 @@ first creation of a site."
     
     (setq basedir (elmake-site-init-dir basedir)))
   (while (not infodir)
-    (setq infodir (read-file-name "Info dir: "))
+    (setq infodir (read-file-name "Info dir: "
+				  "~/" nil nil "elmake-info"))
     (setq infodir (elmake-site-init-dir infodir)))
   (unless registerto
     (setq registerto (read-file-name "Where to add load code: " "~/" nil t ".emacs")))

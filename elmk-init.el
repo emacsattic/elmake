@@ -16,6 +16,7 @@
 (defvar elmake-init-before-hook nil)
 (defvar elmake-init-after-hook nil)
 (defvar elmake-site-alist nil)
+(defvar normal-top-level-add-subdirs-inode-list nil)
 
 (defun elmake-internal-adjust-load-path ()
   "Used to adjust the load path to add the elmake dir and all subdirs.
@@ -66,12 +67,13 @@ Shamelessly ripped from startup.el (Emacs 21)"
 (defun elmake-initialize-info-path ()
   "Add elmake info dir to info path."
   (eval-after-load 'info
-    (add-to-list 'Info-default-directory-list
-		 elmake-info-dir t)))
+    (unless (member elmake-info-dir Info-default-directory-list)
+      (setq Info-default-directory-list 
+	    (append Info-default-directory-list (list elmake-info-dir))))))
 
 (defun elmake-register-site ()
   "Register this site into `elmake-site-alist'."
-(add-to-list 'elmake-site-alist (list elmake-site-name elmake-base-dir elmake-info-dir) t))
+(add-to-list 'elmake-site-alist (list elmake-site-name elmake-base-dir elmake-info-dir)))
 
 (defun elmake-init ()
   "Initialize an elmake base dir."
