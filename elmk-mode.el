@@ -9,8 +9,9 @@
   (eval-when-compile
     (concat "(\\("
 	    (regexp-opt '("elmakefile" "filelist" "string" "target" "eval"
-			  "concat" "depends" "combine" "remove "))
-	    "\\)[ )]")))
+			  "concat" "depends" "combine" "remove" "filenames"
+			  "filesuffixes" "indir" "flat" "exact" "replace"))
+	    "\\)\\>")))
 
 (defconst elmake-mode-builtins
   (eval-when-compile
@@ -20,17 +21,16 @@
 			  "execute" "register-require" "register-installed"
 			  "register-uninstalled" "unregister-require"
 			  "nop" "update-autoloads" "copy-elmakefile"
-			  "delete-elmakefile"))
-	    "\\)[ )]")))
+			  "delete-elmakefile" "cd" "copy-modified" "touch"
+			  "depends-if"))
+	    "\\)\\>")))
   
 
 ;;;###autoload
 (define-derived-mode elmake-mode lisp-mode "elMake"
   "Major mode for editing and running elMakefiles"
   (define-key elmake-mode-map (kbd "C-c C-r") 'elmake-uninstall)
-  (if (string-match "_$" (buffer-file-name))
-      (define-key elmake-mode-map (kbd "C-c C-v") 'elmake-install-to)
-    (define-key elmake-mode-map (kbd "C-c C-v") 'elmake-install)))
+  (define-key elmake-mode-map (kbd "C-c C-v") 'elmake-install-decide))
 
 
 ;;;###autoload
@@ -53,6 +53,15 @@ used by default for elmakefiles whose extension is `.elMake_'."
 (interactive "P\nDSource directory: ")
   (cd dest)
   (elmake-install arg))
+
+(defun elmake-install-decide ()
+  "Install the elMakefile in current buffer.
+When the filename ends with an underscore, use `elmake-install-to',
+else use `elmake-install'."
+  (interactive)
+  (if (string-match "_\\'" (buffer-file-name))
+      (call-interactively 'elmake-install-to)
+    (call-interactively 'elmake-install)))
 
 (provide 'elmk-mode)
 

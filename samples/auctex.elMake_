@@ -1,0 +1,76 @@
+;; an elmakefile for auctex 11.14
+
+((elmakefile "auctex" "11.14")
+ (string autodir (concat targetdir "/auto"))
+ (filelist elcfiles "\\.elc\\'")
+ (filelist texifiles "\\.texi\\'")
+ (filelist contrib (filenames "hilit-LaTeX.el" "bib-cite.el" 
+			      "tex-jp.el" "tex-fptex.el"))
+ (filelist aucsrc (filenames "auc-old.el" "tex.el" "tex-buf.el" "latex.el" 
+			     "tex-info.el" "texmathp.el" "multi-prompt.el" 
+			     "tex-mik.el" "font-latex.el" "tex-font.el"))
+ (filelist aucelc (filenames "auc-old.elc" "tex.elc" "tex-buf.elc" "latex.elc" 
+			     "tex-info.elc" "texmathp.elc" "multi-prompt.elc" 
+			     "tex-mik.elc" "font-latex.elc" "tex-font.elc"))
+ (filelist stylesrc (indir "style" "\\.el\\'"))
+ (filelist docfiles (indir "doc" "Makefile" "\\.texi\\'" "-ref\\.tex\\'"))
+ (filelist extrafiles (filenames "COPYING" "PROBLEMS" "IRIX" "Makefile" 
+				 "ChangeLog"  "lpath.el" "tex-site.el") 
+	   contrib)
+ (filelist infofiles (indir "doc" "\\`auctex\\(-[0-9]*\\)?\\'"))
+ (string sitefile (concat basedir "/tex-site.el"))
+ (string styledir (concat targetdir "/style"))
+ (string autodir (concat targetdir "/auto"))
+ (target "compile" (depends "inits")
+	 (compile aucsrc stylesrc))
+ (target "install" (depends "compile" "install-lisp")
+	 (copy-elmakefile targetdir)
+	 (register-require tex-site)
+	 (register-installed))
+ (target "contrib" (depends "inits")
+	 (compile (filenames "bib-cite.el" "font-latex.el")))
+ (target "install-lisp"
+	 (depends-if (not (file-exists-p (elmake-parse-string 'sitefile)))
+		     "install-tex-site")
+	 (mkdir targetdir)
+	 (mkdir styledir)
+	 (copy targetdir aucelc)
+	 (copy (flat styledir) (indir "style" "\\.elc\\'"))
+	 (copy-source targetdir aucsrc)
+	 (copy-source targetdir (indir "style" "\\.el\\'"))
+	 (touch styledir ".nosearch")
+	 (mkdir autodir)
+	 (touch autodir ".nosearch"))
+ (target "install-contrib" (depends "inits")
+	 (compile (filenames "bib-cite-el"))
+	 (copy targetdir (filenames "bib-cite.elc"))
+	 (copy-source targetdir contrib))
+ (target "install-tex-site"
+	 (copy-modified basedir "tex-site.el" (replace "@AUCDIR" targetdir)))
+ (target "install-info"
+	 (cd "doc")
+	 (makeinfo  (filenames "auc-tex.texi"))
+	 (cd "..")
+	 (copy (flat infodir) infofiles)
+	 ;; fixme: -(cd doc; $(MAKE) install infodir=$(infodir))
+	 )
+ (target "install-auto"
+	 (message "Use \"M-x TeX-auto-generate-global RET\" instead."))
+ (target "update" (depends "install"))
+ (target "uninstall-for-update" (depends "uninstall"))
+ (target "uninstall"
+	 ;; leave tex-site.el intact!
+	 (delete targetdir aucsrc aucelc (indir "style" "\\.elc?\\'")
+		 (filenames "bib-cite.el" "bib-cite.elc")
+		 (exact "style/.nosearch" "auto/.nosearch"))
+	 (delete infodir infofiles)
+	 (delete-elmakefile targetdir)
+	 (rmdir autodir)
+	 (rmdir styledir)
+	 (rmdir targetdir)
+	 (unregister-require tex-site)
+	 (register-uninstalled))
+ (target "clean"
+	 (delete "." "~\\'" elcfiles))
+ (target "inits"
+	 (run (setq TeX-lisp-directory (elmake-parse-string 'targetdir)))))

@@ -131,6 +131,20 @@ already defined and stored in `elmake-project-filelist-alist'."
    ((not elem) elem)
    ((and (listp elem) (eq (car elem) 'combine))
 	 (elmake-parse-filelist-entry (car (cdr elem)))) ;; to implement...
+   ((and (listp elem) (eq (car elem) 'filenames))
+    (elmake-parse-filelist-entry (concat "\\`" (regexp-opt (cdr elem) t)
+					 "\\'")))
+   ((and (listp elem) (eq (car elem) 'filesuffixes))
+    (elmake-parse-filelist-entry (concat (regexp-opt (cdr elem) t)
+					 "\\'")))
+   ((and (listp elem) (eq (car elem) 'exact))
+    (cdr elem))
+   ((and (listp elem) (eq (car elem) 'indir))
+    (let ((default-directory default-directory) res)
+      (cd (expand-file-name (car (cdr elem))))
+      (setq res (elmake-parse-filelist (cdr (cdr elem))))
+      (mapcar (lambda (x)
+		(concat (car (cdr elem)) "/" x)) res)))
    ((and (listp elem) (eq (car elem) 'remove))
     (let ((inc (elmake-parse-filelist-entry (car (cdr elem))))
 	  (exc (elmake-parse-filelist-entry (cdr (cdr elem)))))
@@ -150,6 +164,25 @@ already defined and stored in `elmake-project-filelist-alist'."
     (setq result (nconc result (elmake-parse-filelist-entry (car val)))
 	  val (cdr val)))
   result))
+
+(defun elmake-parse-destination (dest file)
+  "Parse a destination DEST.
+This takes a file FILE and returns the name of it at that destination."
+  (cond
+   ((null dest) ;; nil leaves file as is
+    file)
+   ((and (consp dest) (eq (car dest) 'flat))
+    (let* ((dest2 (elmake-parse-destination (car (cdr dest)) ""))
+	   (p (string-match "[^/]*$" file))
+	   (file2 (if p
+		      (substring file p)
+		    p)))
+      (concat dest2 file2)))
+   ((and (consp dest) (eq (car dest) 'replace))
+    (error "FIXME: not implemented"))
+   ((stringp (elmake-parse-string dest))
+    (concat (elmake-parse-string dest) "/" file))
+   (t (error "Unknown destination %S for file %S" dest file))))
 
 (defun elmake-run-target (target)
   "Execute a given TARGET from the loaded elMakefile."
@@ -194,6 +227,7 @@ add."
 (defun elmake-run-action (action level)
   "Run one ACTION.
 LEVEL specifies the nesting level of the target running this action."
+;;   (message ">>>%S" action)
   (unless (listp action)
     (error "Unknown action: %s" action))
   (cond
@@ -224,7 +258,7 @@ LEVEL specifies the nesting level of the target running this action."
 	  (elmake-log level (format "   byte compiling %s"
 			  (car flist)))
 	  (unless (byte-compile-file (car flist))
-	    (elmake-log level (format "*** error compiling %s"))))
+	    (elmake-log level (format "*** error compiling %s" (car flist)))))
 	(setq flist (cdr flist)))))
    ((eq (car action) 'makeinfo) ;;; makeinfo ;;;
     (let ((flist (elmake-parse-filelist (cdr action))))
@@ -238,14 +272,15 @@ LEVEL specifies the nesting level of the target running this action."
    ((or (eq (car action) 'copy) ;;; copy ;;;
 	(and (eq (car action) 'copy-source) ;;; copy-source ;;;
 	     elmake-copy-source))
-    (let ((dest (elmake-parse-string (car (cdr action))))
+    (let ((dest (car (cdr action)))
 	  (flist (elmake-parse-filelist (cdr (cdr action)))))
       (while flist
-	(when (file-newer-than-file-p (car flist)
-				      (concat dest "/" (car flist) ))
+	(let* ((file (car flist))
+	       (destfile (elmake-parse-destination dest file)))
+	  (when (file-newer-than-file-p file destfile)
 	  (elmake-log level (format "   copying %s to %s"
-			  (car flist) dest))
-	  (copy-file (car flist) (concat dest "/" (car flist)) t t))
+			  file destfile))
+	  (copy-file file destfile t)))
 	(setq flist (cdr flist)))))
    ((eq (car action) 'copy-elmakefile) ;;; copy-elmakefile ;;;
     (let ((dest (elmake-parse-string (car (cdr action)))))
@@ -259,15 +294,16 @@ LEVEL specifies the nesting level of the target running this action."
    ((eq (car action) 'copy-source) ;;; copy-source when disabled ;;;
     nil)
    ((eq (car action) 'delete) ;;; delete;;;
-    (let ((dest (elmake-parse-string (car (cdr action))))
+    (let ((dest (car (cdr action)))
 	  (flist (elmake-parse-filelist (cdr (cdr action)))))
       (while flist
-	(when (file-exists-p (concat dest "/" (car flist)))
+	(let* ((file (car flist))
+	       (destfile (elmake-parse-destination dest file)))
+	(when (file-exists-p destfile)
 	  (elmake-log level (format "   deleting %s"
-			  (car flist)))
-	  (delete-file(concat dest "/" (car flist))))
+			  file))
+	  (delete-file destfile)))
 	(setq flist (cdr flist)))))
-
    ((eq (car action) 'delete-elmakefile) ;;; delete-elmakefile;;;
     (let ((dest (elmake-parse-string (car (cdr action)))))
       (when (file-exists-p (concat dest "/elMakefile"))
@@ -324,8 +360,61 @@ LEVEL specifies the nesting level of the target running this action."
    ((eq (car action) 'nop) ;;; nop ;;;
     ;; no operation, but evaluate all args, if any
     (mapconcat 'elmake-parse-string (cdr action) ""))
+   ((eq (car action) 'run) ;;; run ;;;
+    (eval (cons 'progn  (cdr action))))
+   ((eq (car action) 'cd) ;;; cd ;;;
+    (cd (elmake-parse-string (car (cdr action)))))
+   ((eq (car action) 'touch) ;;; touch ;;;
+    (let* ((dest (car (cdr action)))
+	   (file (elmake-parse-string (car (cdr (cdr action)))))
+	   (destfile (elmake-parse-destination dest file)))
+      (save-excursion
+	(with-current-buffer (find-file-noselect destfile)
+	  (set-buffer-modified-p t)
+	  (save-buffer 0)
+	  (kill-buffer nil)))))
+   ((eq (car action) 'copy-modified) ;;; copy-modified ;;;
+    (let* ((dest (car (cdr action)))
+	   (file (nth 2 action))
+	   (mods (cdr (cdr (cdr action)))))
+      (elmake-log level (format "   copying modified version of %s to %s"
+				file
+				(elmake-parse-destination dest file)))
+      (save-excursion
+	(with-current-buffer (find-file-noselect file)
+	  (mapc 'elmake-run-buffer-mod mods)
+	  (write-file (elmake-parse-destination dest file))
+	  (kill-buffer nil)))))
+   ((eq (car action) 'depends-if) ;;; depends-if ;;;
+    (if (eval (car (cdr action)))
+	(elmake-run-action (cons 'depends (cdr (cdr action))) level)))
    (t (error "Unknown action: %s" action))))
  
+
+(defun elmake-run-buffer-mod (mod)
+  "Run buffer mod MOD.
+This mod might change the contents of the current buffer.  Buffer mods
+are used for the `copy-modified' command."
+  (cond
+   ((not mod)
+    nil)
+   ((not (consp mod))
+    (error "Unsupported buffer mod: %S" mod))
+   ((eq (car mod) 'eval)
+    (eval (cons 'progn (cdr mod))))
+   ((eq (car mod) 'replace)
+    (let ((args (cdr mod)) fromstring tostring)
+      (while (and args (cdr args))
+	(setq fromstring (elmake-parse-string (car args))
+	      tostring (elmake-parse-string (car (cdr args)))
+	      args (cdr (cdr args)))
+	(goto-char (point-min))
+	(while (search-forward fromstring nil t)
+	  (replace-match tostring t t)))
+      (if args (error "Replace needs an even number of arguments"))))
+   (t
+    (error "Unsupported buffer mod: &S" mod))))
+
 (defun elmake-feature-from-file (filename)
   "Convert FILENAME to a feature name."
   (let* ((fl (file-name-sans-extension filename))
@@ -353,7 +442,8 @@ been installed, uninstall that one first."
   (let* ((dir (buffer-file-name))
 	 (match (string-match "\\(.*\\)/" dir))
 	 (substr (match-string 1 dir)))
-    (cd substr))
+    (unless (string-match "\\.el[mM]ake_\\'" dir)
+      (cd substr)))
   (goto-char (point-min))
   (elmake-load-elmakefile (current-buffer))
   
