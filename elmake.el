@@ -177,7 +177,7 @@ add."
   (elmake-log level (format "--- Running %s" targetname))
   (add-to-list 'elmake-targets-done targetname)
   (let ((actions (aget elmake-project-target-alist targetname))
-	(load-path (cons (aget elmake-project-string-alist "targetdir")  
+	(load-path (cons (aget elmake-project-string-alist "targetdir")
 			 (cons "." load-path))))
     (unless actions
       (error "Unknown target %s" targetname))
@@ -388,10 +388,11 @@ that case.  Otherwise throw an error."
 	(elmake-run-target target)
 	(message "Installing Target `%s'...done" target)))))
 
-(defun elmake-uninstall-old-version (name target)
+(defun elmake-uninstall-old-version (name target &optional noread)
   "Uninstalls the installed version of NAME.
-This loads the makefile of this program and runs the TARGET
-target from it."
+This loads the makefile of this program and runs the TARGET target
+from it.  If NOREAD is non-nil, do not treat current buffer as an
+elMakefile."
   (let ((oldbuf (window-buffer (selected-window))) buf)
     (save-excursion
       (setq buf (find-file (concat elmake-base-dir "/" name "-"
@@ -403,9 +404,10 @@ target from it."
       (kill-buffer buf)
       (elmake-run-target target))
     (switch-to-buffer oldbuf)
-    (set-buffer oldbuf)
-    (goto-char (point-min))
-    (elmake-load-elmakefile (current-buffer))))
+    (unless noread
+      (set-buffer oldbuf)
+      (goto-char (point-min))
+      (elmake-load-elmakefile (current-buffer)))))
 
 (defun elmake-save-database ()
   "Write the database file and compile it."

@@ -25,8 +25,9 @@
 
 ;;;###autoload
 (defun elmake-single-uninstall (file)
+  "Uninstall an installed single file FILE."
   (save-excursion
-    (with-current-buffer (find-file-noselect (concat elmake-base-dir 
+    (with-current-buffer (find-file-noselect (concat elmake-base-dir
 						     elmake-single-file-place
 						     "/" file))
       (delete-region (point-min) (point-max))
@@ -44,7 +45,7 @@ uninstalling single files."
     (add-to-list 'load-path default-directory)
     (save-excursion
       (with-current-buffer (get-buffer-create "*elMake*")
-	(setq default-directory (concat elmake-base-dir 
+	(setq default-directory (concat elmake-base-dir
 					elmake-single-file-place))))
     (setq elmake-project-name "single-file"
 	  elmake-project-version "0"
@@ -63,7 +64,7 @@ uninstalling single files."
 	    (compile elfile aloadfile)
 	    (register-require elmk-sf-al)))
     (elmake-run-target "install")
-    (cond 
+    (cond
      (delete
       (let ((fl filelist))
 	(while fl
