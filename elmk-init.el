@@ -1,17 +1,21 @@
-;;; elmake-load.el --- initializing elmake and projects installed by it
-;; 
-
+;;; elmk-init.el --- initializing elmake and projects installed by it
 
 ;;; Commentary:
-;; 
+
+;; contains code that is needed at every emacs startup.
+;;
+;; this file does not need autoloads, as it is loaded at startup anyway
+;;
+;; FIXME: insert contents of this file into elmake-db.el
 
 ;;; Code:
 
+(if (not (functionp 'when))
+    (require 'cl))   ;; when, unless
 
-;; we need these vars here as well.
-(defvar elmake-installed-alist nil)
-(defvar elmake-require-list nil)
-
+(defvar elmake-init-before-hook nil)
+(defvar elmake-init-after-hook nil)
+(defvar elmake-site-alist nil)
 
 (defun elmake-internal-adjust-load-path ()
   "Used to adjust the load path to add the elmake dir and all subdirs.
@@ -55,66 +59,28 @@ Shamelessly ripped from startup.el (Emacs 21)"
 
 (defun elmake-initialize-load-path ()
   "Add elmake dir and subdirs to load path."
-(add-to-list 'load-path elmake-base-dir)
+  (add-to-list 'load-path elmake-base-dir)
   (let ((default-directory elmake-base-dir))
     (setq load-path (nconc (elmake-internal-adjust-load-path) load-path))))
 
+(defun elmake-initialize-info-path ()
+  "Add elmake info dir to info path."
+  (eval-after-load 'info
+    (add-to-list 'Info-default-directory-list
+		 elmake-info-dir t)))
 
-(defun elmake-initialize-database ()
-  "Load information about installed projects from \"elmake-db\"."
-  (let ((oldbuf (current-buffer)) buf)
-    (save-excursion
-      (setq buf (find-file-noselect (concat elmake-base-dir "/elmake-db")))
-      (set-buffer buf)
-      (goto-char (point-min))
-      (setq  elmake-installed-alist
-	     (condition-case nil
-		 (read buf)
-	     (error nil)))
-      (setq  elmake-require-list
-	     (condition-case nil
-		 (read buf)
-	     (error nil)))
-      (kill-buffer buf))
-  ;  (switch-to-buffer oldbuf)
-))
-	      
+(defun elmake-register-site ()
+  "Register this site into `elmake-site-alist'."
+(add-to-list 'elmake-site-alist (list elmake-site-name elmake-base-dir elmake-info-dir) t))
 
-(defun elmake-save-database ()
-  "Save information about installed projects into \"elmake-db\"."
-  (let ((oldbuf (current-buffer)) buf)
-    (save-excursion
-      (setq buf (find-file-noselect (concat elmake-base-dir "/elmake-db")))
-      (set-buffer buf)
-      (delete-region (point-min) (point-max))
-      (insert (prin1-to-string elmake-installed-alist))
-      (insert "\n")
-      (insert (prin1-to-string elmake-require-list))
-      (save-buffer buf)
-      (kill-buffer buf))
-  ;  (switch-to-buffer oldbuf)
-    )
-  (message "Saved elmake database."))
+(defun elmake-init ()
+  "Initialize an elmake base dir."
+  (run-hooks 'elmake-init-before-hook)
+  (elmake-register-site)
+  (elmake-initialize-load-path)
+  (elmake-initialize-info-path)
+  (run-hooks 'elmake-init-after-hook))
 
-(defun elmake-load-needed-data ()
-  "Load all requirements listed in the elmake database."
-  (message "-- elmake requires: %S" elmake-require-list)
-  (let ((l elmake-require-list))
-    (while l
-      (elmake-require (car l))
-      (setq l (cdr l)))))
+(provide 'elmk-init)
 
-(defun elmake-require (feature)
-  "Require a FEATURE or execute some Lisp code."
-  (if (listp feature)
-      (eval feature)
-    (require feature)))
-
-;; and now run all those things...
-(elmake-initialize-load-path)
-(elmake-initialize-database)
-(elmake-load-needed-data)
-
-(provide 'elmake-load)
-
-;;; elmake-load.el ends here
+;;; elmk-init.el ends here

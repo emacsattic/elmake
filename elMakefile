@@ -1,31 +1,45 @@
 ;; elMake is a way to run elMakefiles.
 ;;
-;; to install elmake, open elmake-self-install.el in emacs and
-;; follow the instructions there. If you already installed emake, you
-;; can uninstall/update elmake by pressing C-c C-v while this file is 
-;; shown.
+;; to install elmake, open elmake-self-install.el in emacs and follow
+;; the instructions there. If you already installed emake, you can
+;; update elmake by pressing C-c C-v while this file is shown.
+;;
+;; press C-c C-r to uninstall or C-u C-c C-v to run an arbitrary
+;; target.
 
-((elmakefile "elmake" "0.0.0822g")
- (filelist elfiles "\\.el$")
+((elmakefile "elmake" "0.0.0823a")
+ (filelist elfiles (remove "\\.el$" . "elmake-self-install\\.el"))
  (filelist elcfiles "\\.elc$")
  (filelist this "^elMakefile$")
- (filelist loadfiles "^elmake-load\\.elc?$") 
+ (filelist loadfiles "^elmk-init\\.elc?$") 
  (filelist infofiles "elmake\\.info$")
+ (string aloadfile "elmk-aload.el")
+ (target "clean"
+	 (delete "." elcfiles infofiles "^elmk-aload.el$"))
  (target "compile" 
+	 (update-autoloads aloadfile elfiles)
 	 (compile elfiles)
-	 (makeinfo "elmake\\.texi$"))
+	 (makeinfo "elmake\\.texi$")
+	 (nop))
  (target "install" (depends "compile")
 	 (mkdir targetdir)
 	 (copy targetdir elcfiles this)
 	 (copy-source targetdir elfiles)
 	 (copy basedir loadfiles)
 	 (copy infodir infofiles)
-	 (register-require elmake-autoload)
+	 (register-require elmk-aload)
 	 (register-installed))
- (target "uninstall"
+ (target "update" (depends "install"))
+ (target "uninstall-for-update"
+	 ;; dirty hack: ensure all files needed for update are loaded
+	 ;; otherwise install will fail badly.
+	 (nop (eval . (progn 
+		      (require 'elmk-info)
+		      "")))
 	 (delete targetdir elfiles elcfiles this)
 	 (delete infodir infofiles)
 	 (rmdir targetdir)
-	 (unregister-require elmake-autoload)
-	 (register-uninstalled)))
-
+	 (unregister-require elmk-aload)
+	 (register-uninstalled))
+ (target "uninstall"
+	 (message "You cannot uninstall elmake. Do it manually.")))

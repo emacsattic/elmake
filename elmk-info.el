@@ -1,4 +1,4 @@
-;;; elmake-makeinfo.el --- makeinfo support for elMake
+;;; elmk-info.el --- makeinfo support for elMake
 
 
 ;;; Commentary:
@@ -11,6 +11,7 @@
 (defvar elmake-makeinfo-executable "makeinfo")
 (defvar elmake-makeinfo-use-texinfo-format-buffer nil)
 
+;;;###autoload
 (defun elmake-makeinfo (filename &optional indir)
   "Create an info file from FILENAME in INDIR."
   (elmake-log 0 ">>> Running makeinfo...")
@@ -50,13 +51,29 @@
   (set-buffer (get-buffer-create "*elMake*"))
   t)
 
+;;;###autoload
 (defun elmake-makeinfo-dest-file (filename)
   "Implement this!
 FILENAME"
-"non-existent.file")
-;; to implement.
+  ;; ripped from makeinfo.el
+  (let (makeinfo-output-file-name)
+    (save-excursion
+      (with-current-buffer (find-file-noselect filename)
+	(goto-char (point-min))
+	(let ((search-end (save-excursion (forward-line 100) (point))))
+	  (if (re-search-forward 
+	       "^@setfilename[ \t]+\\([^ \t\n]+\\)[ \t]*"
+	       search-end t)
+	      (setq makeinfo-output-file-name 
+		    (buffer-substring (match-beginning 1) (match-end 1)))
+;	    (setq makeinfo-output-file-name "non-existent.file")
+	    (error
+	     "The texinfo file needs a line saying: @setfilename <name>")
+;
+))
+      (kill-buffer nil)))
+    makeinfo-output-file-name))
 
+(provide 'elmk-info)
 
-(provide 'elmake-makeinfo)
-
-;;; elmake-makeinfo.el ends here
+;;; elmk-info.el ends here

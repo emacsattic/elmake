@@ -1,4 +1,4 @@
-;;; elmake-mode.el --- a mode to highlight elMakefiles
+;;; elmk-mode.el --- a mode to highlight elMakefiles
 
 ;;; Commentary:
 ;; 
@@ -18,25 +18,29 @@
 	    (regexp-opt '("compile" "message" "mkdir" "copy" "copy-source"
 			  "delete" "chdir" "makeinfo" "rmdir" "evaluate"
 			  "execute" "register-require" "register-installed"
-			  "register-uninstalled" "unregister-require"))
+			  "register-uninstalled" "unregister-require"
+			  "nop" "update-autoloads"))
 	    "\\)[ )]")))
   
 
+;;;###autoload
 (define-derived-mode elmake-mode lisp-mode "elMake"
   "Major mode for editing and running elMakefiles"
+  (define-key elmake-mode-map (kbd "C-c C-r") 'elmake-uninstall)
   (if (string-match "_$" (buffer-file-name))
       (define-key elmake-mode-map (kbd "C-c C-v") 'elmake-install-to)
     (define-key elmake-mode-map (kbd "C-c C-v") 'elmake-install)))
 
 
+;;;###autoload
 (add-to-list 'auto-mode-alist
 	     '("\\(\\(^\\|/\\)el[Mm]ake\\(file\\|.fle\\)\\|\\.el[Mm]ake_?\\)\\'"
 	        . elmake-mode))
 
 (font-lock-add-keywords
  'elmake-mode
- (list (cons elmake-mode-keywords  1)
-       (list elmake-mode-builtins 1 'font-lock-builtin-face)))
+ `( (,elmake-mode-keywords . 1)
+    (,elmake-mode-builtins 1 'font-lock-builtin-face)))
 
 (defun elmake-install-to (arg dest)
   "Install the elMakefile in current buffer like `elmake-install'.
@@ -49,6 +53,6 @@ used by default for elmakefiles whose extension is `.elMake_'."
   (cd dest)
   (elmake-install arg))
 
-(provide 'elmake-mode)
+(provide 'elmk-mode)
 
-;;; elmake-mode.el ends here
+;;; elmk-mode.el ends here
